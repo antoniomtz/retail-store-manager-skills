@@ -1,0 +1,63 @@
+{
+  "source_system": "opd-operations",
+  "data_as_of": "2026-08-03T05:55:00-07:00",
+  "store_id": "SEA-014",
+  "business_date": "2026-08-03",
+  "status": "at_risk",
+  "operating_window": {
+    "starts_at": "2026-08-03T06:00:00-07:00",
+    "ends_at": "2026-08-03T07:30:00-07:00"
+  },
+  "first_pick": {
+    "target_started_at": "2026-08-03T05:30:00-07:00",
+    "actual_started_at": "2026-08-03T05:45:00-07:00",
+    "late_start_minutes": 15
+  },
+  "demand": {
+    "items_due_in_window": 1200,
+    "orders_due_in_window": 72,
+    "items_in_pick_queue": 940
+  },
+  "picking": {
+    "current_pick_rate_items_per_hour": 600,
+    "target_pick_rate_items_per_hour": 1000,
+    "current_pickers": 3
+  },
+  "recovery": {
+    "owner_role": "OPD Coach",
+    "recommended_action": "For the recovery window, move two available cross-trained store associates to OPD picking.",
+    "checkpoint_at": "2026-08-03T06:45:00-07:00",
+    "minimum_pick_rate_items_per_hour": 900,
+    "maximum_remaining_pick_queue_items": 490
+  },
+  "simulation": {
+    "simulated_at": "2026-08-03T06:00:00-07:00",
+    "baseline": {
+      "items_due_in_window": 480,
+      "orders_due_in_window": 30,
+      "items_in_pick_queue": 300,
+      "current_pickers": 4,
+      "current_pick_rate_items_per_hour": 800,
+      "target_pick_rate_items_per_hour": 800
+    },
+    "demand_surge": {
+      "label": "OPD demand surge",
+      "additional_items_due_in_window": 720,
+      "additional_orders_due_in_window": 42,
+      "additional_items_in_pick_queue": 640
+    },
+    "associate_callout": {
+      "label": "OPD associate call-out",
+      "associate_reference": "SYNTH-FUL-07",
+      "role": "OPD picker",
+      "picker_reduction": 1,
+      "pick_rate_reduction_items_per_hour": 200
+    },
+    "recovery_window_minutes": 90,
+    "checkpoint": {
+      "after_minutes": 30,
+      "minimum_pick_rate_items_per_hour": 900,
+      "maximum_remaining_pick_queue_items": 490
+    }
+  }
+}

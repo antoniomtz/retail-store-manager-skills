@@ -1,0 +1,172 @@
+{
+  "source_system": "synthetic-workforce-and-safety-operations",
+  "data_as_of": "2026-08-03T14:10:00-07:00",
+  "store_id": "SEA-014",
+  "business_date": "2026-08-03",
+  "zones": [
+    "front_entrance",
+    "checkout",
+    "sales_floor",
+    "stockroom",
+    "parking_lot",
+    "unknown"
+  ],
+  "associates": [
+    {
+      "associate_reference": "SYNTH-MOD-01",
+      "role": "Manager on duty",
+      "department": "Store Leadership",
+      "status": "available",
+      "response_eta_minutes": 3,
+      "capabilities": ["incident_lead", "emergency_response", "security_response"],
+      "current_commitment": "Store leadership coverage",
+      "reassignment_impact": "Leadership coverage continues through the opening leader",
+      "impact_score": 1
+    },
+    {
+      "associate_reference": "SYNTH-SAF-02",
+      "role": "Safety-trained floor associate",
+      "department": "Home",
+      "status": "available",
+      "response_eta_minutes": 4,
+      "capabilities": ["first_aid", "spill_response", "emergency_response", "security_response", "area_control"],
+      "current_commitment": "Customer assistance in Home",
+      "reassignment_impact": "Home customer assistance runs with one fewer associate during the response",
+      "impact_score": 2
+    },
+    {
+      "associate_reference": "SYNTH-FE-03",
+      "role": "Front-end service associate",
+      "department": "Checkout",
+      "status": "available",
+      "response_eta_minutes": 2,
+      "capabilities": ["customer_flow", "area_control", "spill_response"],
+      "current_commitment": "Front-end service desk coverage",
+      "reassignment_impact": "The service desk remains open with its other scheduled associate",
+      "impact_score": 2
+    },
+    {
+      "associate_reference": "SYNTH-GM-07",
+      "role": "General merchandise associate",
+      "department": "Outdoor",
+      "status": "available",
+      "response_eta_minutes": 5,
+      "capabilities": ["customer_flow", "area_control", "spill_response"],
+      "current_commitment": "Outdoor customer assistance",
+      "reassignment_impact": "Outdoor coverage drops to its scheduled minimum during the response",
+      "impact_score": 1
+    },
+    {
+      "associate_reference": "SYNTH-AP-02",
+      "role": "Asset protection specialist",
+      "department": "Asset Protection",
+      "status": "protected",
+      "response_eta_minutes": 2,
+      "capabilities": ["security_response", "area_control"],
+      "current_commitment": "Active loss-prevention observation",
+      "reassignment_impact": "The active loss-prevention observation would be abandoned",
+      "impact_score": 5
+    },
+    {
+      "associate_reference": "SYNTH-FUL-04",
+      "role": "Fulfillment associate",
+      "department": "Fulfillment",
+      "status": "protected",
+      "response_eta_minutes": 4,
+      "capabilities": ["customer_flow", "area_control"],
+      "current_commitment": "At-risk pickup order recovery",
+      "reassignment_impact": "The active pickup recovery commitment would lose coverage",
+      "impact_score": 5
+    }
+  ],
+  "response_playbooks": {
+    "spill": {
+      "response_capability": "spill_response",
+      "resource": "Nearest spill kit and wet-floor barriers",
+      "immediate_controls": [
+        "Keep customers outside the affected floor area",
+        "Place visible slip-hazard barriers before cleanup begins",
+        "Have the responder identify the substance before selecting cleanup materials"
+      ],
+      "escalation_conditions": [
+        "Escalate immediately if the substance is unknown, hazardous, spreading, or contacting a person",
+        "Use the store emergency procedure if the area cannot be controlled safely"
+      ]
+    },
+    "obstruction": {
+      "response_capability": "area_control",
+      "resource": "Portable safety barriers",
+      "immediate_controls": [
+        "Create a visible boundary around the obstruction",
+        "Redirect customers to an unobstructed route",
+        "Remove the obstruction only when it can be handled without creating another hazard"
+      ],
+      "escalation_conditions": [
+        "Escalate if the obstruction is unstable, heavy, sharp, electrical, or blocks an emergency route"
+      ]
+    },
+    "damaged_fixture": {
+      "response_capability": "area_control",
+      "resource": "Portable safety barriers and fixture lockout tag",
+      "immediate_controls": [
+        "Keep customers outside the fixture fall zone",
+        "Prevent use or movement of the damaged fixture",
+        "Route traffic around the controlled area"
+      ],
+      "escalation_conditions": [
+        "Escalate if the fixture is unstable, energized, leaking, or cannot be isolated"
+      ]
+    },
+    "smoke_or_fire": {
+      "response_capability": "emergency_response",
+      "resource": "Store emergency procedure",
+      "immediate_controls": [
+        "Treat visible smoke or flame as a life-safety event",
+        "Keep people away from the affected area",
+        "Follow the store emergency procedure without waiting for image certainty"
+      ],
+      "escalation_conditions": [
+        "Contact emergency services and begin evacuation when required by the store emergency procedure",
+        "Do not direct an associate to fight a fire unless policy, training, and conditions explicitly permit it"
+      ]
+    },
+    "possible_injury": {
+      "response_capability": "first_aid",
+      "resource": "First-aid kit and store emergency procedure",
+      "immediate_controls": [
+        "Protect the person from additional hazards without moving them unless immediate danger requires it",
+        "Send a trained responder and keep the surrounding area clear",
+        "Follow the store emergency procedure for medical escalation"
+      ],
+      "escalation_conditions": [
+        "Contact emergency services for serious, worsening, or uncertain medical conditions",
+        "Do not diagnose an injury from the image"
+      ]
+    },
+    "security": {
+      "response_capability": "security_response",
+      "resource": "Store security and emergency procedures",
+      "immediate_controls": [
+        "Keep associates and customers away from the observed concern",
+        "Notify the manager on duty",
+        "Use non-confrontational store security procedures"
+      ],
+      "escalation_conditions": [
+        "Contact emergency services for an immediate threat",
+        "Do not identify, profile, pursue, or confront a person from image evidence"
+      ]
+    },
+    "unknown": {
+      "response_capability": "area_control",
+      "resource": "Portable safety barriers",
+      "immediate_controls": [
+        "Use a conservative temporary boundary around the uncertain condition",
+        "Send a qualified associate to verify the scene in person",
+        "Keep customer traffic away until the condition is classified"
+      ],
+      "escalation_conditions": [
+        "Escalate when the on-scene responder finds a life-safety, medical, fire, electrical, chemical, or security risk"
+      ]
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "source_system": "inventory-management",
+  "data_as_of": "2026-08-03T05:45:00-07:00",
+  "store_id": "SEA-014",
+  "not_in_location": {
+    "measurement_window": {
+      "starts_at": "2026-08-02T20:00:00-07:00",
+      "ends_at": "2026-08-03T05:30:00-07:00"
+    },
+    "scans_completed": 842,
+    "detections": 37,
+    "detection_rate_percent": 4.4,
+    "resolved_before_open": 15,
+    "unresolved": 22,
+    "prior_7_day_average_rate_percent": 2.9,
+    "trend": "above_recent_average",
+    "departments": [
+      {
+        "department": "Outdoor",
+        "unresolved": 10
+      },
+      {
+        "department": "Home",
+        "unresolved": 6
+      },
+      {
+        "department": "Seasonal",
+        "unresolved": 4
+      },
+      {
+        "department": "Kitchen",
+        "unresolved": 2
+      }
+    ]
+  },
+  "products": [
+    {
+      "sku": "OUT-1001",
+      "product_name": "Harbor patio chair",
+      "department": "Outdoor",
+      "on_hand": 0,
+      "reorder_point": 8,
+      "average_daily_units": 6,
+      "stock_status": "out_of_stock",
+      "priority": "high"
+    },
+    {
+      "sku": "OUT-1008",
+      "product_name": "Coastal shade umbrella",
+      "department": "Outdoor",
+      "on_hand": 2,
+      "reorder_point": 6,
+      "average_daily_units": 4,
+      "stock_status": "low_stock",
+      "priority": "high"
+    },
+    {
+      "sku": "HOM-2004",
+      "product_name": "Linen storage basket",
+      "department": "Home",
+      "on_hand": 3,
+      "reorder_point": 10,
+      "average_daily_units": 5,
+      "stock_status": "low_stock",
+      "priority": "medium"
+    },
+    {
+      "sku": "KIT-3002",
+      "product_name": "Cast iron skillet",
+      "department": "Kitchen",
+      "on_hand": 18,
+      "reorder_point": 8,
+      "average_daily_units": 3,
+      "stock_status": "healthy",
+      "priority": "normal"
+    },
+    {
+      "sku": "SEA-4003",
+      "product_name": "Outdoor string lights",
+      "department": "Seasonal",
+      "on_hand": 21,
+      "reorder_point": 10,
+      "average_daily_units": 4,
+      "stock_status": "healthy",
+      "priority": "normal"
+    }
+  ]
+}

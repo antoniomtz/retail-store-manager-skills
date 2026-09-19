@@ -1,0 +1,6 @@
+.runtime/
+*.log
+__pycache__/
+*.pyc
+store-manager/demo-ui/dist/
+store-manager/demo-ui/node_modules/

@@ -1,0 +1,97 @@
+{
+  "source_system": "workforce-management",
+  "data_as_of": "2026-08-03T05:30:00-07:00",
+  "store_id": "SEA-014",
+  "business_date": "2026-08-03",
+  "opening_leadership": [
+    {
+      "leader_reference": "SYNTH-COACH-01",
+      "display_name": "Elena Martinez",
+      "role": "Opening Coach",
+      "departments": [
+        "Storewide"
+      ],
+      "shift": "06:00-15:00",
+      "status": "on_site"
+    },
+    {
+      "leader_reference": "SYNTH-COACH-02",
+      "display_name": "Jordan Lee",
+      "role": "OPD Coach",
+      "departments": [
+        "Fulfillment"
+      ],
+      "shift": "05:00-14:00",
+      "status": "on_site"
+    },
+    {
+      "leader_reference": "SYNTH-TL-01",
+      "display_name": "Priya Shah",
+      "role": "Front End Team Lead",
+      "departments": [
+        "Checkout"
+      ],
+      "shift": "07:00-16:00",
+      "status": "scheduled"
+    },
+    {
+      "leader_reference": "SYNTH-TL-02",
+      "display_name": "Morgan Brooks",
+      "role": "Salesfloor Team Lead",
+      "departments": [
+        "Outdoor",
+        "Home",
+        "Kitchen",
+        "Seasonal"
+      ],
+      "shift": "07:00-16:00",
+      "status": "scheduled"
+    },
+    {
+      "leader_reference": "SYNTH-TL-03",
+      "display_name": "Alex Rivera",
+      "role": "Receiving Team Lead",
+      "departments": [
+        "Receiving"
+      ],
+      "shift": "04:00-13:00",
+      "status": "on_site"
+    }
+  ],
+  "coverage": [
+    {
+      "department": "Fulfillment",
+      "time_window": "09:00-12:00",
+      "scheduled_headcount": 2,
+      "required_headcount": 3
+    },
+    {
+      "department": "Outdoor",
+      "time_window": "10:00-14:00",
+      "scheduled_headcount": 3,
+      "required_headcount": 3
+    },
+    {
+      "department": "Home",
+      "time_window": "13:00-17:00",
+      "scheduled_headcount": 2,
+      "required_headcount": 3
+    },
+    {
+      "department": "Checkout",
+      "time_window": "16:00-20:00",
+      "scheduled_headcount": 4,
+      "required_headcount": 4
+    }
+  ],
+  "recovery_options": [
+    {
+      "target_department": "Fulfillment",
+      "source_department": "Available cross-trained store associates",
+      "available_cross_trained_associates": 2,
+      "incremental_pick_rate_items_per_hour": 200,
+      "assignment_duration_minutes": 90,
+      "external_system": "Simulated workforce management system"
+    }
+  ]
+}

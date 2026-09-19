@@ -1,0 +1,94 @@
+name: retail-store-manager
+
+services:
+  camel:
+    image: apache/camel-jbang:4.21.0-21-jdk
+    command:
+      - run
+      - /app/camel/StoreManagerRoute.java
+      - /app/camel/StoreDataRepository.java
+      - /app/camel/StoreSnapshotService.java
+      - /app/camel/SafetySnapshotService.java
+      - /app/camel/OpdOperatingSimulation.java
+      - /app/camel/CheckoutQueueSimulation.java
+      - /app/camel/EndOfDaySimulation.java
+      - /app/camel/IncidentResponseService.java
+      - /app/camel/SimulationException.java
+      - --runtime=quarkus
+      - --dependency=camel-platform-http
+      - --dependency=camel-jackson
+    working_dir: /tmp
+    environment:
+      STORE_MANAGER_DATA_DIR: /app/data
+    ports:
+      - "127.0.0.1:${STORE_MANAGER_CAMEL_PORT:-18080}:8080"
+    volumes:
+      - ./store-manager/camel:/app/camel:ro
+      - ./store-manager/data:/app/data:ro
+      - camel-m2-cache:/home/ubuntu/.m2
+      - camel-jbang-cache:/home/ubuntu/.jbang
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  phoenix:
+    image: arizephoenix/phoenix:19.7.0
+    environment:
+      PHOENIX_WORKING_DIR: /mnt/data
+    ports:
+      - "127.0.0.1:${PHOENIX_PORT:-6006}:6006"
+    volumes:
+      - "${STORE_MANAGER_STATE_DIR:?Set STORE_MANAGER_STATE_DIR}/phoenix:/mnt/data"
+    restart: unless-stopped
+
+  ui:
+    build:
+      context: ./store-manager/demo-ui
+      dockerfile: Dockerfile
+      args:
+        STORE_MANAGER_UI_SOURCE_HASH: "${STORE_MANAGER_UI_SOURCE_HASH:-unknown}"
+    network_mode: host
+    user: "${STORE_MANAGER_HOST_UID:-1000}:${STORE_MANAGER_HOST_GID:-1000}"
+    environment:
+      HOST: "${STORE_MANAGER_UI_BIND:-127.0.0.1}"
+      PORT: "${STORE_MANAGER_UI_PORT:-3000}"
+      SERVICE_BIND_HOST: 127.0.0.1
+      STORE_MANAGER_CAMEL_PORT: "${STORE_MANAGER_CAMEL_PORT:-18080}"
+      PHOENIX_BASE_URL: "http://127.0.0.1:${PHOENIX_PORT:-6006}"
+      HERMES_AUXILIARY_VISION_MODEL: "${HERMES_AUXILIARY_VISION_MODEL:-}"
+      DEMO_ALLOW_SIMULATED_APPROVAL: "${DEMO_ALLOW_SIMULATED_APPROVAL:-0}"
+    volumes:
+      - "${STORE_MANAGER_STATE_DIR:?Set STORE_MANAGER_STATE_DIR}/store-id:/run/store-manager/store-id:ro"
+      - "${STORE_MANAGER_STATE_DIR:?Set STORE_MANAGER_STATE_DIR}/business-date:/run/store-manager/business-date:ro"
+      - "${STORE_MANAGER_STATE_DIR:?Set STORE_MANAGER_STATE_DIR}/webhook-port:/run/store-manager/webhook-port:ro"
+      - "${STORE_MANAGER_STATE_DIR:?Set STORE_MANAGER_STATE_DIR}/webhook-secret:/run/store-manager/webhook-secret:ro"
+    depends_on:
+      camel:
+        condition: service_healthy
+      phoenix:
+        condition: service_started
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:' + process.env.PORT + '/').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+volumes:
+  camel-m2-cache:
+  camel-jbang-cache:

@@ -1,0 +1,40 @@
+{
+  "source_system": "customer-service-performance",
+  "data_as_of": "2026-08-02T22:30:00-07:00",
+  "store_id": "SEA-014",
+  "business_date": "2026-08-02",
+  "checkout_wait": {
+    "measurement_window": {
+      "starts_at": "2026-08-02T09:00:00-07:00",
+      "ends_at": "2026-08-02T20:00:00-07:00"
+    },
+    "store_target_max_minutes": 5.0,
+    "average_wait_minutes": 4.1,
+    "peak_wait_minutes": 11.2,
+    "peak_window": {
+      "starts_at": "2026-08-02T14:00:00-07:00",
+      "ends_at": "2026-08-02T14:30:00-07:00"
+    },
+    "customers_above_target": 77
+  },
+  "opd_dispensing": {
+    "measurement_window": {
+      "starts_at": "2026-08-02T08:00:00-07:00",
+      "ends_at": "2026-08-02T20:00:00-07:00"
+    },
+    "customer_pickup": {
+      "completed_handoffs": 46,
+      "store_target_max_minutes": 5.0,
+      "average_wait_minutes": 4.4,
+      "peak_wait_minutes": 12.6,
+      "handoffs_above_target": 9
+    },
+    "delivery_driver": {
+      "completed_handoffs": 18,
+      "store_target_max_minutes": 8.0,
+      "average_wait_minutes": 7.1,
+      "peak_wait_minutes": 15.4,
+      "handoffs_above_target": 7
+    }
+  }
+}

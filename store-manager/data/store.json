@@ -1,0 +1,29 @@
+{
+  "source_system": "store-master-and-planning",
+  "data_as_of": "2026-08-03T06:00:00-07:00",
+  "store": {
+    "store_id": "SEA-014",
+    "store_name": "Northgate Home & Living",
+    "city": "Seattle",
+    "time_zone": "America/Los_Angeles",
+    "opening_hours": "09:00-20:00"
+  },
+  "daily_plans": [
+    {
+      "business_date": "2026-08-02",
+      "sales_plan": 42800
+    },
+    {
+      "business_date": "2026-08-03",
+      "sales_plan": 46200,
+      "promotion": {
+        "name": "Weekend patio furniture and outdoor products sale",
+        "description": "A weekend sale expected to bring more customers into the Outdoor and Home departments.",
+        "departments": [
+          "Outdoor",
+          "Home"
+        ]
+      }
+    }
+  ]
+}

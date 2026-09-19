@@ -1,0 +1,53 @@
+{
+  "source_system": "order-management",
+  "data_as_of": "2026-08-03T05:50:00-07:00",
+  "store_id": "SEA-014",
+  "business_date": "2026-08-03",
+  "orders": [
+    {
+      "order_reference": "PU-84021",
+      "fulfillment_type": "pickup",
+      "promise_by": "2026-08-03T10:00:00-07:00",
+      "status": "ready_for_pickup",
+      "risk_status": "on_track"
+    },
+    {
+      "order_reference": "PU-84034",
+      "fulfillment_type": "pickup",
+      "promise_by": "2026-08-03T11:00:00-07:00",
+      "status": "awaiting_pick",
+      "risk_status": "at_risk",
+      "risk_reason": "Harbor patio chair is out of stock"
+    },
+    {
+      "order_reference": "DL-39118",
+      "fulfillment_type": "delivery",
+      "promise_by": "2026-08-03T13:00:00-07:00",
+      "status": "awaiting_pick",
+      "risk_status": "at_risk",
+      "risk_reason": "Picking queue exceeds the morning staffing plan"
+    },
+    {
+      "order_reference": "PU-84042",
+      "fulfillment_type": "pickup",
+      "promise_by": "2026-08-03T14:00:00-07:00",
+      "status": "picked",
+      "risk_status": "on_track"
+    },
+    {
+      "order_reference": "DL-39127",
+      "fulfillment_type": "delivery",
+      "promise_by": "2026-08-03T16:00:00-07:00",
+      "status": "awaiting_pick",
+      "risk_status": "on_track"
+    },
+    {
+      "order_reference": "PU-84057",
+      "fulfillment_type": "pickup",
+      "promise_by": "2026-08-03T17:00:00-07:00",
+      "status": "awaiting_substitution",
+      "risk_status": "at_risk",
+      "risk_reason": "Coastal shade umbrella is below the pickup allocation threshold"
+    }
+  ]
+}

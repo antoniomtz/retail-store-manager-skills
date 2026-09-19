@@ -1,0 +1,17 @@
+node_modules
+dist
+.next
+.vinext
+.wrangler
+coverage
+playwright-report
+test-results
+e2e
+tests
+README.md
+eslint.config.mjs
+playwright.config.ts
+scripts
+.gitignore
+npm-debug.log*
+*.tsbuildinfo

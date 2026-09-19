@@ -1,0 +1,4 @@
+name: store-manager-agent-response-ready
+description: Publish Store Manager recommendations to the demo UI only after the webhook agent has produced its final manager message.
+events:
+  - agent:end

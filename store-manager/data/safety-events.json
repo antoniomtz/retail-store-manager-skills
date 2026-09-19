@@ -1,0 +1,135 @@
+{
+  "source_system": "synthetic-computer-vision-and-safety-log",
+  "data_as_of": "2026-08-03T06:00:00-07:00",
+  "store_id": "SEA-014",
+  "business_date": "2026-08-03",
+  "reporting_window": {
+    "starts_at": "2026-08-02T20:00:00-07:00",
+    "ends_at": "2026-08-03T06:00:00-07:00"
+  },
+  "privacy": {
+    "contains_images": false,
+    "contains_person_identifiers": false
+  },
+  "events": [
+    {
+      "event_id": "SAFE-20260803-001",
+      "classification": "hazard",
+      "event_type": "wet_floor",
+      "description": "Possible water on the floor",
+      "location": {
+        "zone_id": "AISLE-03",
+        "label": "Aisle 3"
+      },
+      "severity": "high",
+      "status": "awaiting_verification",
+      "detected_at": "2026-08-03T05:52:00-07:00",
+      "last_observed_at": "2026-08-03T05:58:00-07:00",
+      "verification": {
+        "status": "unverified"
+      },
+      "observation": {
+        "source_type": "computer_vision",
+        "confidence_percent": 93
+      },
+      "response": {
+        "playbook_id": "wet-floor-response",
+        "playbook_name": "Wet-floor response",
+        "response_target_minutes": 5,
+        "recommended_response": "Inspect the area and follow the store wet-floor response procedure if the observation is confirmed."
+      }
+    },
+    {
+      "event_id": "SAFE-20260803-002",
+      "classification": "hazard",
+      "event_type": "blocked_emergency_exit",
+      "description": "Empty pallets partially block an emergency exit route",
+      "location": {
+        "zone_id": "RECEIVING-EXIT-01",
+        "label": "Receiving emergency exit"
+      },
+      "severity": "critical",
+      "status": "response_dispatched",
+      "detected_at": "2026-08-03T05:44:00-07:00",
+      "last_observed_at": "2026-08-03T05:57:00-07:00",
+      "verification": {
+        "status": "confirmed",
+        "verified_at": "2026-08-03T05:48:00-07:00"
+      },
+      "observation": {
+        "source_type": "computer_vision",
+        "confidence_percent": 98
+      },
+      "response": {
+        "playbook_id": "emergency-exit-obstruction",
+        "playbook_name": "Emergency-exit obstruction response",
+        "response_target_minutes": 3,
+        "recommended_response": "Keep the exit route closed to traffic until the obstruction is removed and clearance is verified."
+      }
+    },
+    {
+      "event_id": "SAFE-20260803-003",
+      "classification": "incident",
+      "event_type": "fixture_contact",
+      "description": "A stocking cart struck an endcap display during overnight replenishment",
+      "location": {
+        "zone_id": "HOME-ENDCAP-07",
+        "label": "Home endcap 7"
+      },
+      "severity": "low",
+      "status": "cleared",
+      "detected_at": "2026-08-03T01:18:00-07:00",
+      "last_observed_at": "2026-08-03T01:21:00-07:00",
+      "verification": {
+        "status": "confirmed",
+        "verified_at": "2026-08-03T01:24:00-07:00"
+      },
+      "observation": {
+        "source_type": "computer_vision",
+        "confidence_percent": 91
+      },
+      "response": {
+        "playbook_id": "fixture-contact-response",
+        "playbook_name": "Fixture-contact response",
+        "response_target_minutes": 10,
+        "recommended_response": "Inspect the display and record any damage or injury through the store incident procedure."
+      },
+      "resolution": {
+        "cleared_at": "2026-08-03T01:32:00-07:00",
+        "outcome": "The display was reset, and the synthetic safety log records no reported injury."
+      }
+    },
+    {
+      "event_id": "SAFE-20260803-004",
+      "classification": "hazard",
+      "event_type": "walkway_obstruction",
+      "description": "An empty pallet obstructed a backroom walkway",
+      "location": {
+        "zone_id": "BACKROOM-WALKWAY-02",
+        "label": "Backroom walkway 2"
+      },
+      "severity": "medium",
+      "status": "cleared",
+      "detected_at": "2026-08-03T04:45:00-07:00",
+      "last_observed_at": "2026-08-03T05:08:00-07:00",
+      "verification": {
+        "status": "confirmed",
+        "verified_at": "2026-08-03T04:49:00-07:00"
+      },
+      "observation": {
+        "source_type": "computer_vision",
+        "confidence_percent": 96
+      },
+      "response": {
+        "playbook_id": "walkway-obstruction-response",
+        "playbook_name": "Walkway-obstruction response",
+        "response_target_minutes": 10,
+        "recommended_response": "Remove the obstruction and verify that the full walkway is clear."
+      },
+      "resolution": {
+        "cleared_at": "2026-08-03T05:12:00-07:00",
+        "outcome": "The pallet was removed, and the walkway was verified clear."
+      }
+    }
+  ]
+}

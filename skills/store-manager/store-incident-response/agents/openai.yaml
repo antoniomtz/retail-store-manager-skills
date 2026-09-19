@@ -1,0 +1,4 @@
+interface:
+  display_name: "Store Incident Response"
+  short_description: "Assess store incident photos and plan a response"
+  default_prompt: "Use $store-incident-response to assess this store incident photo and recommend a response plan."

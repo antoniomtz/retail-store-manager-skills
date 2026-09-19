@@ -1,0 +1,81 @@
+{
+  "source_system": "opening-inspection-and-overnight-handoff",
+  "data_as_of": "2026-08-03T06:05:00-07:00",
+  "store_id": "SEA-014",
+  "business_date": "2026-08-03",
+  "store_condition": {
+    "overall_status": "attention_needed",
+    "areas_ready": 4,
+    "areas_checked": 6,
+    "checks": [
+      {
+        "area": "Customer entrance and carts",
+        "status": "ready"
+      },
+      {
+        "area": "Parking lot and exterior",
+        "status": "ready"
+      },
+      {
+        "area": "Restrooms",
+        "status": "ready"
+      },
+      {
+        "area": "Checkout and service desk",
+        "status": "ready"
+      },
+      {
+        "area": "Salesfloor signing",
+        "status": "attention_needed"
+      },
+      {
+        "area": "Receiving and backroom",
+        "status": "attention_needed"
+      }
+    ],
+    "major_issues": [
+      {
+        "issue_id": "OPEN-ISSUE-001",
+        "area": "Outdoor promotional display",
+        "severity": "medium",
+        "status": "open",
+        "description": "The patio display is missing 18 promotional price signs.",
+        "owner_role": "Salesfloor Team Lead",
+        "target_resolution_at": "2026-08-03T09:00:00-07:00"
+      },
+      {
+        "issue_id": "OPEN-ISSUE-002",
+        "area": "Receiving",
+        "severity": "medium",
+        "status": "open",
+        "description": "Three patio furniture pallets remain from the overnight unload.",
+        "owner_role": "Receiving Team Lead",
+        "target_resolution_at": "2026-08-03T10:00:00-07:00"
+      }
+    ]
+  },
+  "overnight_carryover": [
+    {
+      "carryover_id": "CARRY-001",
+      "department": "Receiving",
+      "work_type": "freight",
+      "quantity": 3,
+      "unit": "pallets",
+      "status": "open",
+      "description": "Three patio furniture pallets remain to be worked to the salesfloor.",
+      "owner_role": "Receiving Team Lead",
+      "target_completion_at": "2026-08-03T10:00:00-07:00"
+    },
+    {
+      "carryover_id": "CARRY-002",
+      "department": "Outdoor",
+      "work_type": "price_signs",
+      "quantity": 18,
+      "unit": "signs",
+      "status": "open",
+      "description": "Promotional price signs remain to be placed on the patio display.",
+      "owner_role": "Salesfloor Team Lead",
+      "target_completion_at": "2026-08-03T09:00:00-07:00"
+    }
+  ]
+}

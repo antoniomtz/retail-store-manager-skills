@@ -1,0 +1,183 @@
+{
+  "source_system": "checkout-vision-and-operations",
+  "data_as_of": "2026-08-03T16:00:00-07:00",
+  "store_id": "SEA-014",
+  "business_date": "2026-08-03",
+  "simulation": {
+    "simulated_at": "2026-08-03T16:00:00-07:00",
+    "zone_id": "FRONT-END-A",
+    "zone_name": "Main checkout area",
+    "baseline": {
+      "people_in_queue": 3,
+      "estimated_wait_minutes": 2.2,
+      "arrival_rate_customers_per_15_minutes": 14,
+      "current_throughput_customers_per_hour": 54,
+      "active_staffed_lanes": 1,
+      "active_self_checkout_stations": 6,
+      "vision_confidence": 0.98
+    },
+    "queue_surge": {
+      "label": "Checkout line is longer than the store's limit",
+      "people_in_queue": 12,
+      "estimated_wait_minutes": 8.4,
+      "arrival_rate_customers_per_15_minutes": 31,
+      "vision_confidence": 0.97
+    },
+    "thresholds": {
+      "maximum_people_in_queue": 6,
+      "maximum_estimated_wait_minutes": 5.0,
+      "minimum_vision_confidence": 0.85
+    },
+    "forecast": {
+      "horizon_minutes": 30,
+      "expected_arrivals": 62,
+      "peak_expected_in_minutes": 12,
+      "reason": "Checkout traffic is higher than usual because a weekend sale on patio furniture and other outdoor products is bringing more customers into the store on Sunday afternoon.",
+      "evidence": "On the last four Sundays with a similar sale, checkout demand stayed high for 24 to 31 minutes."
+    },
+    "hard_constraints": {
+      "protected_workstreams": [
+        "opd_recovery"
+      ],
+      "minimum_department_coverage_enforced": true,
+      "checkout_training_required": true,
+      "break_compliance_enforced": true
+    },
+    "workforce_context": [
+      {
+        "associate_reference": "SYNTH-FLEX-11",
+        "department": "Outdoor",
+        "checkout_trained": true,
+        "availability": "available",
+        "current_priority": "Restocking patio furniture and outdoor products for today's sale",
+        "workstream": "replenishment",
+        "protected": false,
+        "minimum_coverage_preserved_if_redeployed": true
+      },
+      {
+        "associate_reference": "SYNTH-FLEX-12",
+        "department": "Fulfillment",
+        "checkout_trained": true,
+        "availability": "committed",
+        "current_priority": "Active OPD recovery assignment",
+        "workstream": "opd_recovery",
+        "protected": true,
+        "minimum_coverage_preserved_if_redeployed": false,
+        "movement_restriction_reason": "This associate is handling delayed online pickup and delivery orders and cannot be moved to checkout."
+      },
+      {
+        "associate_reference": "SYNTH-FLEX-13",
+        "department": "Home",
+        "checkout_trained": true,
+        "availability": "break_due",
+        "current_priority": "Required break within 10 minutes",
+        "workstream": "department_coverage",
+        "protected": true,
+        "minimum_coverage_preserved_if_redeployed": true,
+        "movement_restriction_reason": "This associate must begin a required break within 10 minutes and cannot be reassigned."
+      },
+      {
+        "associate_reference": "SYNTH-FE-03",
+        "department": "Checkout",
+        "checkout_trained": true,
+        "availability": "available",
+        "current_priority": "Front-end service desk coverage",
+        "workstream": "front_end_support",
+        "protected": false,
+        "minimum_coverage_preserved_if_redeployed": true
+      }
+    ],
+    "recovery_options": [
+      {
+        "plan_id": "OPEN-REG-1",
+        "title": "Open staffed register 6",
+        "action_type": "staffed_lane",
+        "action": "Move one checkout-trained associate from the Outdoor department to open staffed register 6.",
+        "associate_references": [
+          "SYNTH-FLEX-11"
+        ],
+        "source_departments": [
+          "Outdoor"
+        ],
+        "associates_reassigned": 1,
+        "registers_to_open": 1,
+        "self_checkout_hosts_to_reposition": 0,
+        "assignment_duration_minutes": 20,
+        "incremental_throughput_customers_per_hour": 17,
+        "projected_people_in_queue_at_checkpoint": 5,
+        "projected_wait_minutes_at_checkpoint": 3.6,
+        "tradeoffs": [
+          "Restocking patio furniture and outdoor products will pause for about 20 minutes.",
+          "No one is moved from the team handling delayed online pickup and delivery orders."
+        ]
+      },
+      {
+        "plan_id": "SCO-SUPPORT",
+        "title": "Add help at self-checkout",
+        "action_type": "self_checkout",
+        "action": "Move one checkout-trained associate from the front-end service desk to help customers at self-checkout.",
+        "associate_references": [
+          "SYNTH-FE-03"
+        ],
+        "source_departments": [
+          "Checkout"
+        ],
+        "associates_reassigned": 1,
+        "registers_to_open": 0,
+        "self_checkout_hosts_to_reposition": 1,
+        "assignment_duration_minutes": 20,
+        "incremental_throughput_customers_per_hour": 8,
+        "projected_people_in_queue_at_checkpoint": 6,
+        "projected_wait_minutes_at_checkpoint": 5.7,
+        "tradeoffs": [
+          "Customers at the front-end service desk may wait longer during those 20 minutes.",
+          "No one is moved from a sales department or the team handling delayed online pickup and delivery orders."
+        ]
+      },
+      {
+        "plan_id": "OPEN-REG-2",
+        "title": "Open staffed registers 6 and 7",
+        "action_type": "staffed_lane",
+        "action": "Move two checkout-trained associates from Outdoor and Fulfillment to open staffed registers 6 and 7.",
+        "associate_references": [
+          "SYNTH-FLEX-11",
+          "SYNTH-FLEX-12"
+        ],
+        "source_departments": [
+          "Outdoor",
+          "Fulfillment"
+        ],
+        "associates_reassigned": 2,
+        "registers_to_open": 2,
+        "self_checkout_hosts_to_reposition": 0,
+        "assignment_duration_minutes": 20,
+        "incremental_throughput_customers_per_hour": 34,
+        "projected_people_in_queue_at_checkpoint": 2,
+        "projected_wait_minutes_at_checkpoint": 1.8,
+        "tradeoffs": [
+          "This option would remove one associate from the team already handling delayed online pickup and delivery orders."
+        ]
+      }
+    ],
+    "default_manager_constraints": {
+      "target_wait_minutes": 5.0,
+      "max_associates_reassigned": 2,
+      "max_assignment_minutes": 30
+    },
+    "instruction_schema": {
+      "minimum_target_wait_minutes": 3.0,
+      "maximum_target_wait_minutes": 8.0,
+      "minimum_assignment_minutes": 10,
+      "maximum_assignment_minutes": 30,
+      "maximum_associates_reassigned": 2,
+      "allowed_action_preferences": [
+        "staffed_lane",
+        "self_checkout"
+      ]
+    },
+    "checkpoint": {
+      "after_minutes": 10
+    },
+    "external_system": "Simulated store staffing system"
+  }
+}

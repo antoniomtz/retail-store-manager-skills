@@ -1,0 +1,221 @@
+{
+  "contract_version": "0.3.0",
+  "store_id": "SEA-014",
+  "business_date": "2026-08-03",
+  "simulation": {
+    "start_at": "2026-08-03T09:00:00-07:00",
+    "interval_minutes": 15,
+    "interval_count": 32,
+    "currency": "USD",
+    "sales_plan": 46200.0,
+    "average_basket": 66.85,
+    "series": {
+      "sales_transactions": [10, 12, 14, 15, 16, 18, 20, 22, 24, 26, 28, 30, 32, 31, 29, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 12, 10, 8],
+      "checkout_people_in_queue": [2, 2, 3, 3, 4, 4, 5, 6, 7, 10, 14, 12, 8, 5, 4, 3, 4, 5, 6, 8, 11, 9, 6, 4, 3, 3, 4, 4, 3, 2, 2, 1],
+      "checkout_wait_minutes": [1.5, 1.5, 2.0, 2.0, 2.5, 3.0, 3.5, 4.0, 5.5, 8.0, 11.2, 9.5, 6.2, 4.0, 3.0, 2.5, 3.0, 3.5, 4.2, 6.0, 8.8, 7.2, 4.8, 3.2, 2.5, 2.3, 3.0, 3.2, 2.5, 2.0, 1.8, 1.5],
+      "checkout_staffed_lanes": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+      "opd_pick_rate_items_per_hour": [800, 800, 800, 820, 820, 810, 800, 800, 790, 780, 760, 740, 720, 700, 600, 600, 620, 1000, 1000, 980, 960, 940, 920, 900, 880, 860, 840, 820, 820, 810, 800, 800],
+      "opd_items_in_pick_queue": [120, 110, 100, 90, 85, 80, 78, 76, 82, 94, 112, 138, 172, 218, 286, 352, 398, 330, 270, 220, 184, 158, 140, 126, 116, 108, 102, 98, 94, 90, 86, 82],
+      "opd_orders_at_risk": [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+      "fulfillment_actual_headcount": [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+      "fulfillment_required_headcount": [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+      "rain_umbrella_on_hand": [12, 12, 11, 11, 10, 10, 9, 8, 8, 7, 6, 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    },
+    "checkout": {
+      "thresholds": {
+        "maximum_people_in_queue": 6,
+        "maximum_estimated_wait_minutes": 5.0
+      },
+      "incidents": [
+        {
+          "incident_id": "EOD-CHK-001",
+          "started_at": "2026-08-03T11:15:00-07:00",
+          "additional_checkout_opened_at": "2026-08-03T11:33:00-07:00",
+          "response_minutes": 18,
+          "recovered_at": "2026-08-03T12:00:00-07:00",
+          "peak_people_in_queue": 14,
+          "peak_wait_minutes": 11.2,
+          "customers_exposed_to_excess_wait": 46,
+          "outcome": "recovered"
+        },
+        {
+          "incident_id": "EOD-CHK-002",
+          "started_at": "2026-08-03T14:00:00-07:00",
+          "additional_checkout_opened_at": "2026-08-03T14:12:00-07:00",
+          "response_minutes": 12,
+          "recovered_at": "2026-08-03T14:45:00-07:00",
+          "peak_people_in_queue": 11,
+          "peak_wait_minutes": 8.8,
+          "customers_exposed_to_excess_wait": 31,
+          "outcome": "recovered"
+        }
+      ]
+    },
+    "opd": {
+      "target_pick_rate_items_per_hour": 800,
+      "late_orders": 2,
+      "incidents": [
+        {
+          "incident_id": "EOD-OPD-001",
+          "started_at": "2026-08-03T12:30:00-07:00",
+          "signals": ["Demand increased above the planned pickup-and-delivery volume.", "One scheduled OPD picker called out."],
+          "recovery_started_at": "2026-08-03T13:07:00-07:00",
+          "response_minutes": 37,
+          "checkpoint_at": "2026-08-03T13:37:00-07:00",
+          "checkpoint_status": "met",
+          "peak_orders_at_risk": 7,
+          "orders_late_at_close": 2,
+          "outcome": "Pick rate recovered, but two orders remained late at close."
+        }
+      ]
+    },
+    "workforce": {
+      "callouts": [
+        {
+          "incident_id": "EOD-WF-001",
+          "role": "OPD picker",
+          "reported_at": "2026-08-03T12:30:00-07:00",
+          "coverage_gap": 1,
+          "covered_at": "2026-08-03T13:07:00-07:00"
+        },
+        {
+          "incident_id": "EOD-WF-002",
+          "role": "Front-end cashier",
+          "reported_at": "2026-08-03T13:50:00-07:00",
+          "coverage_gap": 1,
+          "covered_at": "2026-08-03T14:12:00-07:00"
+        }
+      ]
+    },
+    "inventory": {
+      "stockouts": [
+        {
+          "sku": "SEA-2002",
+          "product_name": "Compact rain umbrella",
+          "department": "Seasonal",
+          "stockout_at": "2026-08-03T13:00:00-07:00",
+          "stockout_minutes": 240,
+          "units_sold_before_stockout": 12,
+          "unserved_customer_requests": 9,
+          "unit_retail_price": 18.99,
+          "end_on_hand": 0
+        },
+        {
+          "sku": "OUT-1001",
+          "product_name": "Harbor patio chair",
+          "department": "Outdoor",
+          "stockout_at": "2026-08-03T10:30:00-07:00",
+          "stockout_minutes": 390,
+          "units_sold_before_stockout": 4,
+          "unserved_customer_requests": 3,
+          "unit_retail_price": 89.0,
+          "end_on_hand": 0
+        }
+      ]
+    },
+    "agent_assisted_actions": {
+      "workflow": "Hermes recommended; the Store Manager approved; the simulated external system executed.",
+      "attribution_note": "Observed results come from synthetic action receipts, checkpoints, and offer records linked to simulated sales receipts. No-action comparisons are bounded estimates, not observed alternate outcomes.",
+      "checkout": {
+        "recommendation_id": "EOD-REC-CHK-001",
+        "manager_approval_id": "EOD-APR-CHK-001",
+        "action_receipt_ids": ["EOD-RCT-CHK-001", "EOD-RCT-CHK-002"],
+        "recommendation": "Open one additional staffed checkout during each detected demand surge.",
+        "manager_approved": true,
+        "execution_status": "completed",
+        "peak_wait_before_minutes": 11.2,
+        "maximum_wait_at_recovery_minutes": 4.0,
+        "projected_customers_exposed_without_action": 132
+      },
+      "opd": {
+        "recommendation_id": "EOD-REC-OPD-001",
+        "manager_approval_id": "EOD-APR-OPD-001",
+        "action_receipt_ids": ["EOD-RCT-OPD-001"],
+        "recommendation": "Move one cross-trained associate to online pickup and delivery until the backlog recovers.",
+        "manager_approved": true,
+        "execution_status": "completed",
+        "pick_rate_before_items_per_hour": 600,
+        "pick_rate_at_checkpoint_items_per_hour": 1000,
+        "projected_late_orders_without_action": 6
+      },
+      "inventory": {
+        "recommendation_id": "EOD-REC-INV-001",
+        "manager_approval_id": "EOD-APR-INV-001",
+        "action_receipt_ids": ["EOD-RCT-INV-001"],
+        "recommendation": "Offer an appropriate in-stock alternative when a requested umbrella or patio chair is unavailable.",
+        "manager_approved": true,
+        "execution_status": "completed",
+        "evidence_source": "Simulated assisted-selling and point-of-sale systems",
+        "link_method": "A completed simulated POS receipt carries the alternative-offer ID that preceded it.",
+        "purchase_receipts_included_in_observed_net_sales": true,
+        "alternative_offer_records": [
+          {"offer_id": "ALT-OFFER-001", "offered_at": "2026-08-03T10:41:00-07:00", "original_sku": "OUT-1001", "alternative_sku": "OUT-1012", "alternative_product_name": "Seaside patio chair", "outcome": "completed_purchase", "purchased_at": "2026-08-03T10:46:00-07:00", "purchase_receipt_id": "POS-43101", "net_sales": 89.00},
+          {"offer_id": "ALT-OFFER-002", "offered_at": "2026-08-03T11:02:00-07:00", "original_sku": "OUT-1001", "alternative_sku": "OUT-1012", "alternative_product_name": "Seaside patio chair", "outcome": "declined"},
+          {"offer_id": "ALT-OFFER-003", "offered_at": "2026-08-03T11:36:00-07:00", "original_sku": "OUT-1001", "alternative_sku": "OUT-1012", "alternative_product_name": "Seaside patio chair", "outcome": "completed_purchase", "purchased_at": "2026-08-03T11:42:00-07:00", "purchase_receipt_id": "POS-43188", "net_sales": 89.00},
+          {"offer_id": "ALT-OFFER-004", "offered_at": "2026-08-03T12:18:00-07:00", "original_sku": "OUT-1001", "alternative_sku": "OUT-1012", "alternative_product_name": "Seaside patio chair", "outcome": "completed_purchase", "purchased_at": "2026-08-03T12:25:00-07:00", "purchase_receipt_id": "POS-43302", "net_sales": 89.00},
+          {"offer_id": "ALT-OFFER-005", "offered_at": "2026-08-03T14:32:00-07:00", "original_sku": "OUT-1001", "alternative_sku": "OUT-1012", "alternative_product_name": "Seaside patio chair", "outcome": "declined"},
+          {"offer_id": "ALT-OFFER-006", "offered_at": "2026-08-03T15:26:00-07:00", "original_sku": "OUT-1001", "alternative_sku": "OUT-1012", "alternative_product_name": "Seaside patio chair", "outcome": "completed_purchase", "purchased_at": "2026-08-03T15:34:00-07:00", "purchase_receipt_id": "POS-43791", "net_sales": 89.00},
+          {"offer_id": "ALT-OFFER-007", "offered_at": "2026-08-03T13:11:00-07:00", "original_sku": "SEA-2002", "alternative_sku": "SEA-2010", "alternative_product_name": "Packable rain poncho", "outcome": "completed_purchase", "purchased_at": "2026-08-03T13:16:00-07:00", "purchase_receipt_id": "POS-43512", "net_sales": 14.99},
+          {"offer_id": "ALT-OFFER-008", "offered_at": "2026-08-03T13:18:00-07:00", "original_sku": "SEA-2002", "alternative_sku": "SEA-2010", "alternative_product_name": "Packable rain poncho", "outcome": "completed_purchase", "purchased_at": "2026-08-03T13:24:00-07:00", "purchase_receipt_id": "POS-43531", "net_sales": 14.99},
+          {"offer_id": "ALT-OFFER-009", "offered_at": "2026-08-03T13:29:00-07:00", "original_sku": "SEA-2002", "alternative_sku": "SEA-2010", "alternative_product_name": "Packable rain poncho", "outcome": "declined"},
+          {"offer_id": "ALT-OFFER-010", "offered_at": "2026-08-03T13:45:00-07:00", "original_sku": "SEA-2002", "alternative_sku": "SEA-2010", "alternative_product_name": "Packable rain poncho", "outcome": "completed_purchase", "purchased_at": "2026-08-03T13:52:00-07:00", "purchase_receipt_id": "POS-43596", "net_sales": 14.99},
+          {"offer_id": "ALT-OFFER-011", "offered_at": "2026-08-03T14:03:00-07:00", "original_sku": "SEA-2002", "alternative_sku": "SEA-2010", "alternative_product_name": "Packable rain poncho", "outcome": "declined"},
+          {"offer_id": "ALT-OFFER-012", "offered_at": "2026-08-03T14:21:00-07:00", "original_sku": "SEA-2002", "alternative_sku": "SEA-2010", "alternative_product_name": "Packable rain poncho", "outcome": "completed_purchase", "purchased_at": "2026-08-03T14:29:00-07:00", "purchase_receipt_id": "POS-43680", "net_sales": 14.99},
+          {"offer_id": "ALT-OFFER-013", "offered_at": "2026-08-03T14:48:00-07:00", "original_sku": "SEA-2002", "alternative_sku": "SEA-2010", "alternative_product_name": "Packable rain poncho", "outcome": "declined"},
+          {"offer_id": "ALT-OFFER-014", "offered_at": "2026-08-03T15:06:00-07:00", "original_sku": "SEA-2002", "alternative_sku": "SEA-2010", "alternative_product_name": "Packable rain poncho", "outcome": "completed_purchase", "purchased_at": "2026-08-03T15:14:00-07:00", "purchase_receipt_id": "POS-43744", "net_sales": 14.99},
+          {"offer_id": "ALT-OFFER-015", "offered_at": "2026-08-03T15:30:00-07:00", "original_sku": "SEA-2002", "alternative_sku": "SEA-2010", "alternative_product_name": "Packable rain poncho", "outcome": "declined"},
+          {"offer_id": "ALT-OFFER-016", "offered_at": "2026-08-03T15:48:00-07:00", "original_sku": "SEA-2002", "alternative_sku": "SEA-2010", "alternative_product_name": "Packable rain poncho", "outcome": "completed_purchase", "purchased_at": "2026-08-03T15:56:00-07:00", "purchase_receipt_id": "POS-43836", "net_sales": 14.99},
+          {"offer_id": "ALT-OFFER-017", "offered_at": "2026-08-03T16:19:00-07:00", "original_sku": "SEA-2002", "alternative_sku": "SEA-2010", "alternative_product_name": "Packable rain poncho", "outcome": "completed_purchase", "purchased_at": "2026-08-03T16:26:00-07:00", "purchase_receipt_id": "POS-43908", "net_sales": 14.99},
+          {"offer_id": "ALT-OFFER-018", "offered_at": "2026-08-03T16:42:00-07:00", "original_sku": "SEA-2002", "alternative_sku": "SEA-2010", "alternative_product_name": "Packable rain poncho", "outcome": "declined"}
+        ]
+      }
+    },
+    "opportunity_cost_assumptions": {
+      "checkout_abandonment_rate_low": 0.04,
+      "checkout_abandonment_rate_high": 0.09,
+      "inventory_request_conversion_rate_low": 0.5,
+      "inventory_request_conversion_rate_high": 1.0,
+      "methodology_note": "These values estimate revenue at risk. They are not confirmed lost sales and must not be added to the observed sales variance."
+    },
+    "tomorrow_context": {
+      "business_date": "2026-08-04",
+      "planning_as_of": "2026-08-03T17:00:00-07:00",
+      "weather": {
+        "condition": "Rain likely during the morning and early afternoon.",
+        "precipitation_probability_percent": 85,
+        "forecast_source": "Synthetic local weather feed"
+      },
+      "promotion": {
+        "name": "Rain-ready essentials promotion",
+        "description": "A one-day promotion on rain gear and entryway products.",
+        "departments": ["Seasonal", "Home"]
+      },
+      "inbound_inventory": [
+        {
+          "sku": "SEA-2002",
+          "product_name": "Compact rain umbrella",
+          "quantity": 24,
+          "expected_at": "2026-08-04T08:30:00-07:00",
+          "receiving_status": "scheduled"
+        }
+      ],
+      "opening_workforce": [
+        {
+          "department": "Receiving",
+          "time_window": "07:30-09:30",
+          "scheduled_headcount": 2,
+          "required_headcount": 3,
+          "coverage_gap": 1
+        },
+        {
+          "department": "Fulfillment",
+          "time_window": "08:00-11:00",
+          "scheduled_headcount": 3,
+          "required_headcount": 4,
+          "coverage_gap": 1
+        }
+      ],
+      "sales_plan": 47800.0
+    }
+  }
+}
