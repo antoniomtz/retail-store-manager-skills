@@ -132,6 +132,7 @@ class ContractSuite:
 
     def run(self) -> None:
         self.test_health_and_snapshots()
+        self.test_morning_briefing_presentation()
         self.test_error_contracts()
         self.test_opd_operating_flow()
         self.test_checkout_operating_flow()
@@ -247,6 +248,63 @@ class ContractSuite:
         expect(isinstance(recovery.get("execution_constraints"), dict), "OPD constraints are missing")
         expect(isinstance(recovery.get("recovery"), dict), "OPD recovery forecast is missing")
         print("PASS expanded morning operating snapshot and read-only OPD recovery contracts")
+
+    def test_morning_briefing_presentation(self) -> None:
+        empty = self.get("/v1/store-morning-briefing-presentation")
+        expect(empty.get("contract_version") == "0.1.0", "morning presentation contract version changed")
+        expect(empty.get("status") == "empty", "morning presentation did not start empty")
+        expect(empty.get("presentation") is None, "morning presentation returned stale content")
+
+        priorities = [
+            {
+                "rank": 1,
+                "title": "Verify the opening safety observations",
+                "evidence": "Two observations still require confirmation before opening.",
+            },
+            {
+                "rank": 2,
+                "title": "Cover the morning fulfillment shortage",
+                "evidence": "Two associates are scheduled where three are needed from 09:00 to 12:00.",
+            },
+            {
+                "rank": 3,
+                "title": "Review the first online-order promises",
+                "evidence": "The first pick started 15 minutes late and opening orders are at risk.",
+            },
+        ]
+        published = self.post(
+            "/v1/store-morning-briefing-presentation",
+            self.scoped(priorities=priorities),
+        )
+        expect(published.get("status") == "ready", "morning presentation was not published")
+        presentation = published.get("presentation", {})
+        expect(
+            isinstance(presentation.get("presentation_id"), str)
+            and presentation["presentation_id"].startswith("MBR-"),
+            "morning presentation ID changed",
+        )
+        expect(isinstance(presentation.get("published_at"), str), "morning publication time is missing")
+        expect(presentation.get("priorities") == priorities, "morning priorities changed during publication")
+
+        current = self.get("/v1/store-morning-briefing-presentation")
+        expect(current.get("presentation") == presentation, "morning presentation was not retained")
+
+        invalid = self.post(
+            "/v1/store-morning-briefing-presentation",
+            self.scoped(priorities=[{"rank": 2, "title": "Wrong rank", "evidence": "Invalid."}]),
+            expected_status=400,
+        )
+        expect(invalid.get("error") == "invalid_request", "invalid morning presentation was accepted")
+
+        cleared = self.client.request(
+            "DELETE",
+            "/v1/store-morning-briefing-presentation",
+            payload=self.scope,
+        )
+        expect(cleared.get("status") == "empty", "morning presentation reset did not clear state")
+        expect(cleared.get("cleared") is True, "morning presentation reset did not report the removal")
+        expect(self.get("/v1/store-morning-briefing-presentation").get("presentation") is None, "morning presentation survived reset")
+        print("PASS ephemeral morning briefing publication, retrieval, validation, and reset")
 
     def test_error_contracts(self) -> None:
         missing = self.client.request(

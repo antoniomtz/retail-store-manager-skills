@@ -21,7 +21,8 @@ requested TUI-to-Telegram delivery.
 
 - Keep words with every emoji. Use `🌅` for the briefing, `🚨` for immediate
   priorities, `👥` for leadership, `🏪` for store readiness, `📦` for OPD and
-  service, `📈` for traffic and trade, and `⚠️` for unavailable data. Use `🔴`
+  service, `📈` for traffic and trade, and `⚠️` for unavailable data. In the
+  opening-team table use `✅` for on site and `🕒` for scheduled. Use `🔴`
   for returned critical or high severity, `🟠` for medium, and `🟡` for low;
   always include the severity word.
 - Use bold only for the store, material variance, exception status, and the
@@ -56,14 +57,14 @@ requested TUI-to-Telegram delivery.
 
 | Department | Lead or Coach | Shift · status |
 |---|---|---|
-| {{group departments only when the same person covers them}} | {{display_name}} · {{role}} | {{shift}} · {{plain-language on_site or scheduled status}} |
+| {{group departments only when the same person covers them}} | {{display_name}} · {{role}} | {{shift}} · {{`✅ On site` or `🕒 Scheduled` from status}} |
 
 ## 🏪 Store readiness
 
-- **Condition:** {{areas_ready}} of {{areas_checked}} areas ready. {{up to two major issues and open overnight carryover, stated once with owner and target time.}}
-- **Coverage:** {{each staffing gap in plain language: department, window, scheduled, needed, and shortage.}}
-- **Availability:** {{unresolved not_in_location count and current rate versus recent average; name the department with the most unresolved detections. Mention a confirmed inventory exception only when it is a ranked priority.}}
-- **Safety:** {{the highest-priority unresolved safety observation or incident and the count of any others needing attention; otherwise state that none need attention.}}
+- {{`✅` when overall_status is ready; `🟠` when attention_needed}} **Condition:** {{areas_ready}} of {{areas_checked}} areas ready · {{plain-language overall_status}}. {{Up to two major issues and open overnight carryover, stated once with owner and target time; say no issues need attention when none are returned.}}
+- 👤 **Coverage:** {{each staffing gap in plain language: department, window, scheduled, needed, and shortage; use `No gaps` when none are returned.}}
+- 📍 **Availability:** {{unresolved not_in_location count and current rate versus recent average; name the department with the most unresolved detections. Mention a confirmed inventory exception only when it is a ranked priority.}}
+- 🛡️ **Safety:** {{the highest-priority unresolved safety observation or incident and the count of any others needing attention; otherwise state that none need attention.}}
 
 ## 📦 OPD and customer service
 

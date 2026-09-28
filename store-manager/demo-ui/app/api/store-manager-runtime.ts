@@ -6,6 +6,7 @@ const WEBHOOK_RESPONSE_LIMIT_BYTES = 16 * 1024;
 const STORE_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 const BUSINESS_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const WEBHOOK_SECRET_PATTERN = /^[0-9a-f]{64}$/;
+const HERMES_API_KEY_PATTERN = /^[A-Za-z0-9._~+/=-]{32,512}$/;
 const LOOPBACK_HOST = "127.0.0.1";
 
 export type StoreIdentity = {
@@ -105,13 +106,19 @@ export async function boundedJson(
   return parsed as Record<string, unknown>;
 }
 
-export async function camelRequest(path: string, payload?: Record<string, unknown>) {
+export async function camelRequest(path: string, payload: Record<string, unknown>) {
+  return camelMutation(path, "POST", payload);
+}
+
+export async function camelMutation(
+  path: string,
+  method: "POST" | "DELETE",
+  payload: Record<string, unknown>,
+) {
   const response = await fetch(new URL(path, camelBaseUrl()), {
-    method: payload ? "POST" : "GET",
-    headers: payload
-      ? { accept: "application/json", "content-type": "application/json" }
-      : { accept: "application/json" },
-    body: payload ? JSON.stringify(payload) : undefined,
+    method,
+    headers: { accept: "application/json", "content-type": "application/json" },
+    body: JSON.stringify(payload),
     cache: "no-store",
     signal: AbortSignal.timeout(10_000),
   });
@@ -148,6 +155,48 @@ function webhookRuntime() {
 
 export function requireWebhookRuntime() {
   webhookRuntime();
+}
+
+function hermesApiRuntime() {
+  if (process.env.STORE_MANAGER_HERMES_CHAT_ENABLED !== "1") {
+    throw new Error("Hermes chat is disabled");
+  }
+  const key = process.env.HERMES_API_SERVER_KEY?.trim();
+  const port = Number(process.env.HERMES_API_SERVER_PORT?.trim() || "8642");
+  if (
+    !key
+    || !HERMES_API_KEY_PATTERN.test(key)
+    || !Number.isInteger(port)
+    || port < 1024
+    || port > 65535
+  ) {
+    throw new Error("Hermes chat runtime is unavailable");
+  }
+  return { key, port };
+}
+
+export function hermesChatEnabled() {
+  return process.env.STORE_MANAGER_HERMES_CHAT_ENABLED === "1";
+}
+
+export async function hermesApiFetch(
+  path: string,
+  init: RequestInit = {},
+  timeoutMs = 10_000,
+) {
+  const { key, port } = hermesApiRuntime();
+  if (!path.startsWith("/") || path.startsWith("//")) {
+    throw new Error("invalid Hermes API path");
+  }
+  const headers = new Headers(init.headers);
+  headers.set("authorization", `Bearer ${key}`);
+  headers.set("accept", headers.get("accept") || "application/json");
+  return fetch(`http://${LOOPBACK_HOST}:${port}${path}`, {
+    ...init,
+    headers,
+    cache: "no-store",
+    signal: init.signal || AbortSignal.timeout(timeoutMs),
+  });
 }
 
 export async function notifyHermes(

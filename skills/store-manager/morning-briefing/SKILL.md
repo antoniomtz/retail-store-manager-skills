@@ -1,6 +1,6 @@
 ---
 name: morning-briefing
-description: Create a concise, evidence-based opening briefing with prioritized recommendations for one retail store without changing store systems. Use when a Store Manager asks for a daily morning briefing, opening ownership, store condition, overnight carryover, safety observations, OPD backlog and dispensing waits, not-in-location trends, customer wait times, hourly traffic, inventory, fulfillment, staffing, or prior-day trade. When the current user explicitly requests delivery from a local TUI session, the skill may write one managed temporary report and deliver it once to the configured Telegram recipient.
+description: Create a concise, evidence-based opening briefing with prioritized recommendations for one retail store without changing store systems. Use when a Store Manager asks for a daily morning briefing, opening ownership, store condition, overnight carryover, safety observations, OPD backlog and dispensing waits, not-in-location trends, customer wait times, hourly traffic, inventory, fulfillment, staffing, or prior-day trade. A successful briefing publishes its bounded priority-card presentation to the private demo API. When the current user explicitly requests delivery from a local TUI session, the skill may also write one managed temporary report and deliver it once to the configured Telegram recipient.
 ---
 
 # Morning Briefing
@@ -54,6 +54,51 @@ and prior-day dispensing waits; it is not the OPD recovery diagnosis.
    stated freshness threshold.
 6. Write the briefing from returned facts only. Keep the manager's immediate
    priorities and recommended opening agenda ahead of secondary detail.
+7. Publish the exact ranked priorities used in the briefing through the
+   bounded presentation workflow below before returning the completed response.
+
+## Priority-card presentation
+
+After selecting the ranked priorities, use them as the single source for both
+the **Open first** section and the demo UI cards. Do not independently rewrite,
+reorder, add, or remove a priority between the two representations.
+
+1. Write exactly one JSON object to
+   `/tmp/store-manager-morning-briefing-priorities.json` with `write_file`:
+
+   ```json
+   {
+     "store_id": "<the validated configured store ID>",
+     "business_date": "<the validated briefing business date>",
+     "priorities": [
+       {
+         "rank": 1,
+         "title": "<the concise manager action without Markdown>",
+         "evidence": "<the one short evidence sentence without Markdown>"
+       }
+     ]
+   }
+   ```
+
+   Include only the supported one to four priorities, in rank order. Use plain
+   text without Markdown markers, HTML, placeholders, source-system names, or
+   implementation commentary. Keep each title under 140 characters and each
+   evidence sentence under 280 characters.
+2. Run this exact command once:
+
+   ```bash
+   python3 "__HERMES_HOME__/skills/store-manager/morning-briefing/scripts/publish_morning_priorities.py" --payload-file "/tmp/store-manager-morning-briefing-priorities.json"
+   ```
+
+3. Render the **Open first** list from the same titles and evidence. Formatting
+   may add numbering and bold emphasis, but the wording and order must match.
+4. If publication fails, still return the complete briefing and add only this
+   short notice at the end: `The manager priority display could not be refreshed.`
+   Do not retry or expose endpoint details.
+
+Do not publish a partial or unavailable briefing. This state exists only for
+the synthetic demo display, is replaced by the next successful briefing, and
+may be cleared by the UI Reset control or a Camel restart.
 
 ## Channel and delivery
 
@@ -254,6 +299,7 @@ This skill is read-only with respect to store systems. It must not change invent
 staffing, prices, promotions, or store records; expose credentials; or claim
 that a follow-up was completed. Recommendations express attention and
 next-step judgment only; they must not ask for approval or trigger a store
-action. The only permitted side effect is one Telegram copy when the current
-TUI user explicitly requests it, using the bounded delivery workflow above.
-Use only the packaged snapshot helper for operational facts.
+action. Permitted side effects are the bounded ephemeral demo presentation for
+every successful briefing and one Telegram copy when the current TUI user
+explicitly requests it. Use only the packaged helpers for those effects and
+the snapshot helper for operational facts.

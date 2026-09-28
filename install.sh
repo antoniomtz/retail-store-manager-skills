@@ -14,6 +14,8 @@ CAMEL_PORT="${STORE_MANAGER_CAMEL_PORT:-18080}"
 UI_PORT="${STORE_MANAGER_UI_PORT:-3000}"
 PHOENIX_PORT="${PHOENIX_PORT:-6006}"
 WEBHOOK_PORT="${STORE_MANAGER_WEBHOOK_PORT:-8644}"
+HERMES_API_PORT="${HERMES_API_SERVER_PORT:-8642}"
+CHAT_ENABLED="${STORE_MANAGER_ENABLE_CHAT:-1}"
 VISION_PROVIDER=""
 VISION_MODEL=""
 VISION_BASE_URL=""
@@ -39,6 +41,10 @@ Options:
 
 The Telegram bot token must already be configured through Hermes's masked local
 setup. Never pass a bot token or model credential to this script.
+
+Environment:
+  STORE_MANAGER_ENABLE_CHAT  Enable the loopback UI Chat tab (default: 1)
+  HERMES_API_SERVER_PORT     Vanilla Hermes API port (default: 8642)
 EOF
 }
 
@@ -67,7 +73,8 @@ done
 
 [[ "$STORE_ID" =~ ^[A-Za-z0-9._-]{1,40}$ ]] || die "store ID contains unsupported characters"
 [[ "$BUSINESS_DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || die "business date must use YYYY-MM-DD"
-for port in "$CAMEL_PORT" "$UI_PORT" "$PHOENIX_PORT" "$WEBHOOK_PORT"; do
+[[ "$CHAT_ENABLED" == "0" || "$CHAT_ENABLED" == "1" ]] || die "STORE_MANAGER_ENABLE_CHAT must be 0 or 1"
+for port in "$CAMEL_PORT" "$UI_PORT" "$PHOENIX_PORT" "$WEBHOOK_PORT" "$HERMES_API_PORT"; do
   [[ "$port" =~ ^[0-9]+$ ]] && ((port >= 1024 && port <= 65535)) || die "ports must be between 1024 and 65535"
 done
 
@@ -105,10 +112,16 @@ wait_http() {
 }
 
 verify_deployment() {
-  local expected_user telegram_rich telemetry vision_model
+  local chat_enabled chat_status expected_user recorded_api_port telegram_rich telemetry vision_model
   [[ -r "$RUNTIME_ENV" ]] || die "runtime state is missing; run ./install.sh first"
   expected_user="$(read_state telegram-user-id)" || die "Telegram target state is missing"
   [[ "$expected_user" =~ ^-?[0-9]+$ ]] || die "recorded Telegram target is invalid"
+  chat_enabled="$(read_state chat-enabled)" || die "UI chat state is missing"
+  [[ "$chat_enabled" == "0" || "$chat_enabled" == "1" ]] || die "recorded UI chat state is invalid"
+  recorded_api_port="$(read_state hermes-api-port)" || die "Hermes API port state is missing"
+  [[ "$recorded_api_port" =~ ^[0-9]+$ ]] && ((recorded_api_port >= 1024 && recorded_api_port <= 65535)) \
+    || die "recorded Hermes API port is invalid"
+  HERMES_API_PORT="$recorded_api_port"
 
   say "Checking containers and loopback services"
   [[ "$(compose ps --status running -q camel | wc -l)" -eq 1 ]] || die "Camel is not running"
@@ -119,6 +132,18 @@ verify_deployment() {
   wait_http "http://127.0.0.1:${UI_PORT}/" || die "the Store Manager UI is unavailable"
   telemetry="$(curl -fsS --max-time 10 "http://127.0.0.1:${UI_PORT}/api/platform-telemetry")" || die "the UI telemetry adapter is unavailable"
   jq -e '.source.status == "connected"' <<<"$telemetry" >/dev/null || die "the UI is not connected to Phoenix"
+  curl -fsS --max-time 10 "http://127.0.0.1:${UI_PORT}/api/morning-briefing" \
+    | jq -e '.connected == true and (.status == "empty" or .status == "ready")' >/dev/null \
+    || die "the UI morning-briefing adapter is unavailable"
+  chat_status="$(curl -fsS --max-time 10 "http://127.0.0.1:${UI_PORT}/api/hermes-chat")" \
+    || die "the UI chat adapter is unavailable"
+  if [[ "$chat_enabled" == "1" ]]; then
+    jq -e '.enabled == true and .connected == true' <<<"$chat_status" >/dev/null \
+      || die "the UI cannot reach the authenticated Hermes Sessions API"
+  else
+    jq -e '.enabled == false and .connected == false' <<<"$chat_status" >/dev/null \
+      || die "the UI chat adapter does not match the disabled installation state"
+  fi
 
   say "Checking the vanilla Hermes installation"
   for skill in morning-briefing opd-recovery opd-surge-response checkout-queue-recovery end-of-day-review store-incident-response; do
@@ -146,19 +171,36 @@ PY
   [[ "${telegram_rich,,}" == "true" ]] || die "Telegram rich final messages are not enabled"
   vision_model="$(hermes config get auxiliary.vision.model 2>/dev/null || true)"
   [[ -n "$vision_model" ]] || die "Hermes auxiliary vision is not configured"
-  "$HERMES_PYTHON" - "$HERMES_HOME/config.yaml" "$WEBHOOK_PORT" <<'PY'
+  "$HERMES_PYTHON" - "$HERMES_HOME/config.yaml" "$HERMES_HOME/.env" "$STATE_DIR/hermes-api-key" "$WEBHOOK_PORT" "$HERMES_API_PORT" "$chat_enabled" <<'PY'
 import sys, yaml
 from pathlib import Path
 config = yaml.safe_load(Path(sys.argv[1]).read_text(encoding="utf-8")) or {}
 webhook = config.get("platforms", {}).get("webhook", {})
 extra = webhook.get("extra", {}) if isinstance(webhook, dict) else {}
-if webhook.get("enabled") is not True or extra.get("host") != "127.0.0.1" or int(extra.get("port", 0)) != int(sys.argv[2]):
+if webhook.get("enabled") is not True or extra.get("host") != "127.0.0.1" or int(extra.get("port", 0)) != int(sys.argv[4]):
     raise SystemExit("Hermes webhook listener does not match the loopback Store Manager configuration")
 webhook_tools = set(config.get("platform_toolsets", {}).get("webhook", []))
 if not {"terminal", "skills", "vision"}.issubset(webhook_tools):
     raise SystemExit("Hermes webhook toolsets are incomplete")
 if "clarify" not in set(config.get("platform_toolsets", {}).get("telegram", [])):
     raise SystemExit("Telegram clarify buttons are not enabled")
+if sys.argv[6] == "1":
+    values = {}
+    for line in Path(sys.argv[2]).read_text(encoding="utf-8").splitlines():
+        if "=" in line and not line.lstrip().startswith("#"):
+            key, value = line.removeprefix("export ").split("=", 1)
+            values.setdefault(key.strip(), []).append(value.strip().strip("'\""))
+    key_file = Path(sys.argv[3])
+    api_keys = values.get("API_SERVER_KEY", [])
+    if not key_file.is_file() or len(api_keys) != 1 or key_file.read_text(encoding="utf-8").strip() != api_keys[0]:
+        raise SystemExit("Hermes API credential state does not match the gateway")
+    if values.get("API_SERVER_ENABLED") != ["true"] or values.get("API_SERVER_HOST") != ["127.0.0.1"]:
+        raise SystemExit("Hermes API server is not enabled on loopback")
+    if values.get("API_SERVER_PORT") != [sys.argv[5]]:
+        raise SystemExit("Hermes API server port does not match the Store Manager runtime")
+    api_tools = set(config.get("platform_toolsets", {}).get("api_server", []))
+    if not {"terminal", "skills", "vision"}.issubset(api_tools):
+        raise SystemExit("Hermes API server toolsets are incomplete")
 PY
   "$HERMES_PYTHON" - "$HERMES_HOME/webhook_subscriptions.json" "$expected_user" <<'PY'
 import json, sys
@@ -208,11 +250,19 @@ printf '%s\n' "$STORE_ID" >"$STATE_DIR/store-id"
 printf '%s\n' "$BUSINESS_DATE" >"$STATE_DIR/business-date"
 printf '%s\n' 127.0.0.1 >"$STATE_DIR/service-host"
 printf '%s\n' "$WEBHOOK_PORT" >"$STATE_DIR/webhook-port"
+printf '%s\n' "$CHAT_ENABLED" >"$STATE_DIR/chat-enabled"
+printf '%s\n' "$HERMES_API_PORT" >"$STATE_DIR/hermes-api-port"
 printf '%s\n' "$TELEGRAM_USER_ID" >"$STATE_DIR/telegram-user-id"
 if [[ ! -s "$STATE_DIR/webhook-secret" ]]; then
   openssl rand -hex 32 >"$STATE_DIR/webhook-secret"
 fi
 chmod 600 "$STATE_DIR/webhook-secret" "$STATE_DIR/telegram-user-id"
+if [[ "$CHAT_ENABLED" == "1" ]]; then
+  python3 "$REPO_DIR/scripts/configure-hermes-api.py" \
+    "$HERMES_HOME/.env" "$STATE_DIR/hermes-api-key" --port "$HERMES_API_PORT"
+else
+  (umask 077; : >"$STATE_DIR/hermes-api-key")
+fi
 UI_SOURCE_HASH="$(find "$REPO_DIR/store-manager/demo-ui" -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)"
 VISION_MODEL_EFFECTIVE="$VISION_MODEL"
 if [[ -z "$VISION_MODEL_EFFECTIVE" ]]; then
@@ -229,6 +279,8 @@ PHOENIX_PORT=${PHOENIX_PORT}
 STORE_MANAGER_UI_SOURCE_HASH=${UI_SOURCE_HASH}
 HERMES_AUXILIARY_VISION_MODEL=${VISION_MODEL_EFFECTIVE}
 DEMO_ALLOW_SIMULATED_APPROVAL=0
+STORE_MANAGER_ENABLE_CHAT=${CHAT_ENABLED}
+HERMES_API_SERVER_PORT=${HERMES_API_PORT}
 EOF
 chmod 600 "$RUNTIME_ENV"
 
@@ -258,7 +310,14 @@ for root in roots:
 PY
 
 BASE_URL="http://127.0.0.1:${CAMEL_PORT}"
-jq -n --arg endpoint "$BASE_URL/v1/store-morning-snapshot" --arg store_id "$STORE_ID" --arg business_date "$BUSINESS_DATE" --arg telegram_chat_id "$TELEGRAM_USER_ID" '{endpoint:$endpoint,store_id:$store_id,business_date:$business_date,telegram_chat_id:$telegram_chat_id}' >"$SKILLS_DEST/morning-briefing/config.json"
+jq -n \
+  --arg endpoint "$BASE_URL/v1/store-morning-snapshot" \
+  --arg presentation_endpoint "$BASE_URL/v1/store-morning-briefing-presentation" \
+  --arg store_id "$STORE_ID" \
+  --arg business_date "$BUSINESS_DATE" \
+  --arg telegram_chat_id "$TELEGRAM_USER_ID" \
+  '{endpoint:$endpoint,presentation_endpoint:$presentation_endpoint,store_id:$store_id,business_date:$business_date,telegram_chat_id:$telegram_chat_id}' \
+  >"$SKILLS_DEST/morning-briefing/config.json"
 jq -n --arg endpoint "$BASE_URL/v1/store-opd-recovery" --arg store_id "$STORE_ID" --arg business_date "$BUSINESS_DATE" '{endpoint:$endpoint,store_id:$store_id,business_date:$business_date}' >"$SKILLS_DEST/opd-recovery/config.json"
 jq -n --arg status_endpoint "$BASE_URL/v1/store-opd-operating-state" --arg plans_endpoint "$BASE_URL/v1/store-opd-recovery-plans" --arg decisions_endpoint "$BASE_URL/v1/store-opd-decisions" --arg actions_endpoint "$BASE_URL/v1/store-opd-actions" --arg store_id "$STORE_ID" --arg business_date "$BUSINESS_DATE" '{status_endpoint:$status_endpoint,plans_endpoint:$plans_endpoint,decisions_endpoint:$decisions_endpoint,actions_endpoint:$actions_endpoint,store_id:$store_id,business_date:$business_date}' >"$SKILLS_DEST/opd-surge-response/config.json"
 jq -n --arg status_endpoint "$BASE_URL/v1/store-checkout-operating-state" --arg plans_endpoint "$BASE_URL/v1/store-checkout-recovery-plans" --arg decisions_endpoint "$BASE_URL/v1/store-checkout-decisions" --arg actions_endpoint "$BASE_URL/v1/store-checkout-actions" --arg store_id "$STORE_ID" --arg business_date "$BUSINESS_DATE" '{status_endpoint:$status_endpoint,plans_endpoint:$plans_endpoint,decisions_endpoint:$decisions_endpoint,actions_endpoint:$actions_endpoint,store_id:$store_id,business_date:$business_date}' >"$SKILLS_DEST/checkout-queue-recovery/config.json"
@@ -297,6 +356,11 @@ hermes tools enable terminal --platform webhook
 hermes tools enable skills --platform webhook
 hermes tools enable vision --platform webhook
 hermes tools enable clarify --platform telegram
+if [[ "$CHAT_ENABLED" == "1" ]]; then
+  hermes tools enable terminal --platform api_server
+  hermes tools enable skills --platform api_server
+  hermes tools enable vision --platform api_server
+fi
 
 say "Activating Hermes native NeMo Relay export to Phoenix"
 cat >"$STATE_DIR/observability/plugins.toml" <<EOF
