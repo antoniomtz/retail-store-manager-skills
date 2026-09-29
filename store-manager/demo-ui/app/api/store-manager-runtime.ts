@@ -8,6 +8,7 @@ const BUSINESS_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const WEBHOOK_SECRET_PATTERN = /^[0-9a-f]{64}$/;
 const HERMES_API_KEY_PATTERN = /^[A-Za-z0-9._~+/=-]{32,512}$/;
 const LOOPBACK_HOST = "127.0.0.1";
+const INCIDENT_PATH_SUFFIX = "/skills/store-manager/store-incident-response/assets/incident.jpg";
 
 export type StoreIdentity = {
   store_id: string;
@@ -158,9 +159,6 @@ export function requireWebhookRuntime() {
 }
 
 function hermesApiRuntime() {
-  if (process.env.STORE_MANAGER_HERMES_CHAT_ENABLED !== "1") {
-    throw new Error("Hermes chat is disabled");
-  }
   const key = process.env.HERMES_API_SERVER_KEY?.trim();
   const port = Number(process.env.HERMES_API_SERVER_PORT?.trim() || "8642");
   if (
@@ -175,8 +173,30 @@ function hermesApiRuntime() {
   return { key, port };
 }
 
+export function requireHermesApiRuntime() {
+  hermesApiRuntime();
+}
+
 export function hermesChatEnabled() {
   return process.env.STORE_MANAGER_HERMES_CHAT_ENABLED === "1";
+}
+
+export function telegramDeliveryEnabled() {
+  return process.env.STORE_MANAGER_TELEGRAM_ENABLED === "1";
+}
+
+export function incidentImagePath() {
+  const value = process.env.STORE_MANAGER_INCIDENT_IMAGE_PATH?.trim();
+  if (
+    !value
+    || !value.startsWith("/")
+    || !value.endsWith(INCIDENT_PATH_SUFFIX)
+    || value.length > 4096
+    || /[`\r\n\0]/.test(value)
+  ) {
+    throw new Error("invalid incident image path");
+  }
+  return value;
 }
 
 export async function hermesApiFetch(

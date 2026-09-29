@@ -1,6 +1,6 @@
 ---
 name: store-incident-response
-description: Assess a current store hazard or incident from a user-uploaded photo or the exact image referenced by an authenticated Store Manager incident webhook, combine bounded visual evidence with fresh synthetic associate availability and safety playbooks, and recommend a response plan with operational tradeoffs. Use when a Store Manager uploads or references an incident image and asks what happened, whether an area is hazardous, who is available to respond, or what the store should do, or when the managed incident webhook requests the installed demo-image assessment for Telegram delivery. Do not use for aggregate checkout camera metrics, OPD operations, general image description, identity recognition, or retrospective incident reporting.
+description: Assess a current store hazard or incident from a user-uploaded photo or the exact image referenced by an authenticated Store Manager request, combine bounded visual evidence with fresh synthetic associate availability and safety playbooks, and recommend a response plan with operational tradeoffs. Use when a Store Manager uploads or references an incident image and asks what happened, whether an area is hazardous, who is available to respond, or what the store should do, or when the managed demo UI or webhook requests the installed demo-image assessment. Do not use for aggregate checkout camera metrics, OPD operations, general image description, identity recognition, or retrospective incident reporting.
 ---
 
 # Store Incident Response
@@ -14,9 +14,9 @@ receives only six bounded classifications and never receives the image.
 1. Require an image attachment, URL, or local image path in the current turn.
    If none exists, request a current incident image and stop. Never reuse an
    earlier image, caption, analysis, classification, or plan.
-   For the authenticated managed incident webhook, the exact installed image
-   path in the route prompt is the current image. Use only that path; do not
-   derive a path or visual fact from the webhook payload.
+   For an authenticated managed demo request, the exact installed image path
+   in the prompt is the current image. Use only that path; do not derive a
+   path or visual fact from request metadata.
 2. Always call `vision_analyze` exactly once with that exact image. Ignore any
    earlier or automatically supplied caption. Use this neutral request:
 
@@ -107,7 +107,7 @@ Make the response easy to follow during a live demo:
   selected team member's returned role and assignment;
 - render the selected team as exactly one two-column Rich Markdown table with
   `Role` and `Assignment` columns so Hermes promotes the final response to
-  Telegram's native rich-message path;
+  Telegram's native rich-message path while remaining readable in the UI;
 - compress all returned immediate controls and escalation conditions into two
   labeled safety lines without weakening or dropping any condition;
 - keep the default response under 180 words when the returned safety text

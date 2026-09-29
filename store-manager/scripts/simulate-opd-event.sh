@@ -30,6 +30,7 @@ if [[ "$COMMAND" == "-h" || "$COMMAND" == "--help" ]]; then
 fi
 
 STATE_DIR="${DATA_DIR}/use-cases/store-manager"
+TELEGRAM_ENABLED="${STORE_MANAGER_TELEGRAM_ENABLED:-$(<"${STATE_DIR}/telegram-enabled")}"
 STORE_ID="${STORE_MANAGER_STORE_ID:-$(<"${STATE_DIR}/store-id")}"
 BUSINESS_DATE="${STORE_MANAGER_BUSINESS_DATE:-$(<"${STATE_DIR}/business-date")}"
 SERVICE_HOST="${STORE_MANAGER_SERVICE_HOST:-$(<"${STATE_DIR}/service-host")}"
@@ -40,6 +41,10 @@ WEBHOOK_PUBLISHER="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/post-stor
 
 [[ "$NOTIFY_HERMES" =~ ^[01]$ ]] || {
   printf '%s\n' "Error: STORE_MANAGER_NOTIFY_HERMES must be 0 or 1." >&2
+  exit 2
+}
+[[ "$TELEGRAM_ENABLED" =~ ^[01]$ ]] || {
+  printf '%s\n' "Error: the installed Store Manager Telegram state is invalid; rerun ./install.sh." >&2
   exit 2
 }
 
@@ -73,7 +78,11 @@ notify_hermes() {
     --route opd-surge \
     --secret-file "$WEBHOOK_SECRET_FILE" \
     --port "$WEBHOOK_PORT" <<<"$webhook_payload"
-  printf '%s\n' "Hermes accepted the event. Its recommendation will be delivered to the configured Telegram user."
+  if [[ "$TELEGRAM_ENABLED" == "1" ]]; then
+    printf '%s\n' "Hermes accepted the event. Its recommendation will be delivered to the configured Telegram user."
+  else
+    printf '%s\n' "Hermes accepted the event. Telegram delivery is not configured; review the operating state in the demo UI."
+  fi
 }
 
 case "$COMMAND" in

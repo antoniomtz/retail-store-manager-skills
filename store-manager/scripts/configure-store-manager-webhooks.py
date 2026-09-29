@@ -52,15 +52,18 @@ def validate_route(name: str, route: object) -> dict:
         raise ValueError(f"the staged {name} webhook route has unsupported events")
     if route.get("skills") != spec["skills"]:
         raise ValueError(f"the staged {name} webhook route has an unsupported skill")
-    if route.get("deliver") != "telegram" or route.get("deliver_only") is True:
-        raise ValueError(f"the staged {name} route must run the agent and deliver to Telegram")
+    if route.get("deliver") not in {"telegram", "log"} or route.get("deliver_only") is True:
+        raise ValueError(f"the staged {name} route must run the agent with a supported delivery target")
     deliver_extra = route.get("deliver_extra")
-    if (
-        not isinstance(deliver_extra, dict)
-        or not isinstance(deliver_extra.get("chat_id"), str)
-        or not re.fullmatch(r"^-?[0-9]+$", deliver_extra["chat_id"])
-    ):
-        raise ValueError(f"the staged {name} route has no configured Telegram user ID")
+    if route["deliver"] == "telegram":
+        if (
+            not isinstance(deliver_extra, dict)
+            or not isinstance(deliver_extra.get("chat_id"), str)
+            or not re.fullmatch(r"^-?[0-9]+$", deliver_extra["chat_id"])
+        ):
+            raise ValueError(f"the staged {name} route has no configured Telegram user ID")
+    elif deliver_extra not in (None, {}):
+        raise ValueError(f"the staged {name} log route must not contain delivery metadata")
     if not isinstance(route.get("prompt"), str) or not route["prompt"].strip():
         raise ValueError(f"the staged {name} route has no prompt")
     return route

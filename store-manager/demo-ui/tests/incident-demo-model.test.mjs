@@ -8,10 +8,12 @@ import {
 } from "../app/incident-demo-model.mjs";
 
 test("keeps the camera evidence inactive until the event is triggered", () => {
-  const ready = readyIncidentState();
+  const ready = readyIncidentState(true);
   assert.equal(ready.connected, true);
   assert.equal(ready.phase, "ready");
   assert.equal(ready.active, false);
+  assert.equal(ready.telegramEnabled, true);
+  assert.equal(ready.deliveryTarget, null);
   assert.equal(ready.image.src, "/incident.jpg");
   assert.equal(ready.image.location, "Fruit and vegetable section");
 });
@@ -21,6 +23,7 @@ test("shows the incident after Hermes accepts the signed event", () => {
   assert.equal(sent.connected, true);
   assert.equal(sent.phase, "sent");
   assert.equal(sent.active, true);
+  assert.equal(sent.deliveryTarget, "telegram");
   assert.equal(sent.deliveryId, "delivery-incident-001");
 });
 

@@ -39,7 +39,7 @@ Treat Store Manager operational questions as time-sensitive:
   current store incident photo and asks what is visible, whether it is a
   hazard, who can respond, or what the store should do, or when the
   authenticated Store Manager incident webhook references its exact installed
-  demo image for Telegram delivery. Follow the skill's
+  demo image for the configured UI or Telegram delivery target. Follow the skill's
   sequence: call `vision_analyze` once for the exact current image, map only its
   description to the bounded helper fields, and then run the packaged planner.
   The main model must not inspect or re-describe the pixels. Never reuse an

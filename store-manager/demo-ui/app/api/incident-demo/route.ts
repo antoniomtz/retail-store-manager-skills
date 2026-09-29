@@ -4,11 +4,14 @@ import {
   unavailableIncidentState,
 } from "../../incident-demo-model.mjs";
 import {
+  incidentImagePath,
   noStoreJson as json,
   notifyHermes,
+  requireHermesApiRuntime,
   requireWebhookRuntime,
   runtimeIdentity,
   sameOrigin,
+  telegramDeliveryEnabled,
 } from "../store-manager-runtime";
 
 export const dynamic = "force-dynamic";
@@ -27,8 +30,9 @@ async function publishIncidentEvent() {
 export async function GET() {
   try {
     runtimeIdentity();
-    requireWebhookRuntime();
-    return json(readyIncidentState());
+    requireHermesApiRuntime();
+    incidentImagePath();
+    return json(readyIncidentState(telegramDeliveryEnabled()));
   } catch {
     return json(unavailableIncidentState());
   }
@@ -43,11 +47,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json() as { action?: unknown };
+    const body = await request.json() as { action?: unknown; delivery?: unknown };
     if (body.action === "reset") {
       runtimeIdentity();
-      requireWebhookRuntime();
-      return json(readyIncidentState());
+      requireHermesApiRuntime();
+      incidentImagePath();
+      return json(readyIncidentState(telegramDeliveryEnabled()));
     }
     if (body.action !== "trigger") {
       return json(
@@ -55,7 +60,14 @@ export async function POST(request: Request) {
         400,
       );
     }
-    return json(sentIncidentState(await publishIncidentEvent()));
+    if (body.delivery !== "telegram" || !telegramDeliveryEnabled()) {
+      return json(
+        { error: "telegram_unavailable", message: "Telegram delivery is not configured for this Store Manager package." },
+        409,
+      );
+    }
+    requireWebhookRuntime();
+    return json(sentIncidentState(await publishIncidentEvent(), true));
   } catch {
     return json(
       {

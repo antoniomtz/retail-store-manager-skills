@@ -1,4 +1,4 @@
-# Telegram rich-message templates
+# Incident rich-message templates
 
 ## Contents
 
@@ -14,13 +14,13 @@ or a templating language. Render the content inside an example without its code
 fence. Never invent a person, identity, hazard fact, qualification, availability,
 response time, outcome, or completed action.
 
-Use compact Rich Markdown. Hermes sends raw agent Markdown through Telegram's
-native rich-message path when the response contains a GitHub-style table. Keep
-the response useful if Hermes falls back to ordinary Markdown.
+Use compact Rich Markdown that renders in the Store Manager UI and through
+Telegram's native rich-message path. Keep the response useful if a client
+falls back to ordinary Markdown.
 
 - Use one `#` H1 for the message title, one `##` H2 for the incident label,
   and `###` H3 headings for the evidence, recommendation, team, and safety
-  sections. Telegram controls their rendered sizes; do not simulate sizing
+  sections. The client controls their rendered sizes; do not simulate sizing
   with repeated bold text or raw HTML.
 - Keep words with every emoji. Use `👁️` for visual evidence, `🚨` for the
   incident, `✅` for the recommendation, `🛡️` for safety actions, and `⚠️` for
@@ -46,8 +46,7 @@ the response useful if Hermes falls back to ordinary Markdown.
   two labeled safety lines. Never hide or omit an escalation condition.
 - Do not use task-list checks because no physical action executes. Do not use
   custom emoji IDs, media links, local media directives, raw HTML, or decorative
-  emoji on every row or line. The managed webhook cannot safely attach a local
-  image through Hermes 0.19's cross-platform delivery path.
+  emoji on every row or line. Do not attach the local image to the response.
 
 ## Compact store incident assessment
 

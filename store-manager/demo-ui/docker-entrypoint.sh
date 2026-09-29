@@ -21,6 +21,7 @@ STORE_MANAGER_BUSINESS_DATE="$(read_state business-date)"
 STORE_MANAGER_WEBHOOK_PORT="$(read_state webhook-port)"
 STORE_MANAGER_WEBHOOK_SECRET="$(read_state webhook-secret)"
 STORE_MANAGER_HERMES_CHAT_ENABLED="${STORE_MANAGER_HERMES_CHAT_ENABLED:-0}"
+STORE_MANAGER_TELEGRAM_ENABLED="${STORE_MANAGER_TELEGRAM_ENABLED:-0}"
 
 case "$STORE_MANAGER_STORE_ID" in
   *[!A-Za-z0-9_-]*|'') printf '%s\n' 'Error: Store Manager store ID is invalid.' >&2; exit 1 ;;
@@ -41,22 +42,24 @@ if [ "${#STORE_MANAGER_WEBHOOK_SECRET}" -ne 64 ]; then
 fi
 
 case "$STORE_MANAGER_HERMES_CHAT_ENABLED" in
-  0) HERMES_API_SERVER_KEY="" ;;
-  1)
-    HERMES_API_SERVER_KEY="$(read_state hermes-api-key)"
-    case "$HERMES_API_SERVER_KEY" in
-      *[![:graph:]]*|'') printf '%s\n' 'Error: Hermes API credential is invalid.' >&2; exit 1 ;;
-    esac
-    if [ "${#HERMES_API_SERVER_KEY}" -lt 32 ] || [ "${#HERMES_API_SERVER_KEY}" -gt 512 ]; then
-      printf '%s\n' 'Error: Hermes API credential is invalid.' >&2
-      exit 1
-    fi
-    ;;
+  0|1) ;;
   *) printf '%s\n' 'Error: STORE_MANAGER_HERMES_CHAT_ENABLED must be 0 or 1.' >&2; exit 1 ;;
 esac
+case "$STORE_MANAGER_TELEGRAM_ENABLED" in
+  0|1) ;;
+  *) printf '%s\n' 'Error: STORE_MANAGER_TELEGRAM_ENABLED must be 0 or 1.' >&2; exit 1 ;;
+esac
+HERMES_API_SERVER_KEY="$(read_state hermes-api-key)"
+case "$HERMES_API_SERVER_KEY" in
+  *[![:graph:]]*|'') printf '%s\n' 'Error: Hermes API credential is invalid.' >&2; exit 1 ;;
+esac
+if [ "${#HERMES_API_SERVER_KEY}" -lt 32 ] || [ "${#HERMES_API_SERVER_KEY}" -gt 512 ]; then
+  printf '%s\n' 'Error: Hermes API credential is invalid.' >&2
+  exit 1
+fi
 
 export STORE_MANAGER_STORE_ID STORE_MANAGER_BUSINESS_DATE
 export STORE_MANAGER_WEBHOOK_PORT STORE_MANAGER_WEBHOOK_SECRET
-export STORE_MANAGER_HERMES_CHAT_ENABLED HERMES_API_SERVER_KEY
+export STORE_MANAGER_HERMES_CHAT_ENABLED STORE_MANAGER_TELEGRAM_ENABLED HERMES_API_SERVER_KEY
 
 exec node server.js

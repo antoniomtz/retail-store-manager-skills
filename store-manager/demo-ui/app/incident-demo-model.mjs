@@ -1,9 +1,11 @@
-export function readyIncidentState() {
+export function readyIncidentState(telegramEnabled = false) {
   return {
     connected: true,
     phase: "ready",
     active: false,
     deliveryId: null,
+    deliveryTarget: null,
+    telegramEnabled: telegramEnabled === true,
     image: {
       src: "/incident.jpg",
       alt: "Current camera view of the reported produce-area incident",
@@ -12,11 +14,12 @@ export function readyIncidentState() {
   };
 }
 
-export function sentIncidentState(deliveryId = null) {
+export function sentIncidentState(deliveryId = null, telegramEnabled = true) {
   return {
-    ...readyIncidentState(),
+    ...readyIncidentState(telegramEnabled),
     phase: "sent",
     active: true,
+    deliveryTarget: "telegram",
     deliveryId: typeof deliveryId === "string" && deliveryId.trim()
       ? deliveryId.trim()
       : null,
