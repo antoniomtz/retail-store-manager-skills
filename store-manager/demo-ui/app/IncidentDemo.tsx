@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { IncidentDemoState } from "./incident-demo-model.mjs";
 import { unavailableIncidentState } from "./incident-demo-model.mjs";
+import { useStoreScene } from "./StoreSceneContext";
 
 type DeliveryTarget = "ui" | "telegram";
 type MutationAction = "trigger" | "reset";
@@ -223,16 +224,16 @@ export function useIncidentDemo() {
   };
 }
 
+/** Shows the 8-bit spill on the store floor while the incident tab is open. */
 export function IncidentMapLayer() {
-  return (
-    <img
-      className="store-stage__incidents store-stage__incidents--active"
-      src="/store-incidents-overlay.png"
-      alt=""
-      aria-hidden="true"
-      draggable={false}
-    />
-  );
+  const scene = useStoreScene();
+
+  useEffect(() => {
+    scene?.setIncident(true);
+    return () => scene?.setIncident(false);
+  }, [scene]);
+
+  return <div className="incident-map-layer" data-spill="visible" aria-hidden="true" />;
 }
 
 const PHASE_COPY: Record<IncidentDemoState["phase"], { eyebrow: string; title: string; tone: string }> = {

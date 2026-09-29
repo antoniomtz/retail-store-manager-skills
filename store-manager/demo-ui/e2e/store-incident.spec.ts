@@ -40,7 +40,10 @@ test("streams a UI incident assessment into an accessible dialog", async ({ page
   });
 
   await page.goto("/");
+  // The store scene settles only after hydration, so the tabs are interactive.
+  await expect(page.locator(".store-stage")).toHaveAttribute("data-scene", /ready|unavailable/, { timeout: 60_000 });
   await page.getByRole("tab", { name: "Store incident" }).click();
+  await expect(page.locator(".incident-map-layer")).toHaveAttribute("data-spill", "visible");
   const scenario = page.getByRole("region", { name: "Store incident scenario" });
 
   await expect(scenario.getByRole("radio", { name: "UI" })).toBeChecked();

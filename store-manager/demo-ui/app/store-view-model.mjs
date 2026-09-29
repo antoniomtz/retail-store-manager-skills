@@ -1,8 +1,12 @@
+/** Aspect ratio of the store framing shown at 100% zoom. */
 export const STORE_ASPECT = 1137 / 909;
 export const MIN_SCALE = 1;
 export const MAX_SCALE = 2.5;
 export const ZOOM_STEP = 0.25;
 export const WHEEL_ZOOM_RATE = 0.0025;
+// Once magnified, the store can pan a little past its 100% framing so edge
+// areas (and their labels) can sit clear of the controls.
+export const PAN_OVERSCROLL = 110;
 
 /**
  * @typedef {{ width: number, height: number }} ViewportSize
@@ -10,8 +14,9 @@ export const WHEEL_ZOOM_RATE = 0.0025;
  */
 
 /**
- * Return the maximum screen-space translation that still keeps the contained
- * store image covering the viewport edge at the current scale.
+ * Return the maximum screen-space translation that keeps the store framing
+ * covering the viewport edge at the current scale, plus a small overscroll
+ * once magnified.
  *
  * @param {ViewportSize} viewport
  * @param {number} scale
@@ -22,9 +27,11 @@ export function getPanBounds(viewport, scale) {
   const fittedWidth = Math.min(width, height * STORE_ASPECT);
   const fittedHeight = fittedWidth / STORE_ASPECT;
 
+  const overscroll = scale > MIN_SCALE ? PAN_OVERSCROLL : 0;
+
   return {
-    x: Math.max(0, (fittedWidth * scale - width) / 2),
-    y: Math.max(0, (fittedHeight * scale - height) / 2),
+    x: Math.max(0, (fittedWidth * scale - width) / 2 + overscroll),
+    y: Math.max(0, (fittedHeight * scale - height) / 2 + overscroll),
   };
 }
 
