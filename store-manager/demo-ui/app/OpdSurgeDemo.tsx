@@ -1,9 +1,10 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { OpdDemoState, OpdPlan } from "./opd-demo-model.mjs";
 import { opdPickerVisualCounts, unavailableOpdState } from "./opd-demo-model.mjs";
+import { SceneAnchor, useStoreScene } from "./StoreSceneContext";
+import { OPD_ASSIGNMENT_LABEL, OPD_KPI_LABEL } from "./store-scene/layout";
 
 const POLL_INTERVAL_MS = 2_000;
 const MAX_VISUAL_FLEX_ASSOCIATES = 2;
@@ -131,30 +132,8 @@ export function useOpdDemo() {
   return { data, loading, busyAction, error, mutate };
 }
 
-function FlexAssociate({ index, assigned }: { index: number; assigned: boolean }) {
-  const style = { "--opd-associate-index": index } as CSSProperties;
-  return (
-    <span
-      className={`opd-flex-associate opd-flex-associate--${index + 1}${assigned ? " opd-flex-associate--assigned" : ""}`}
-      style={style}
-      data-assigned={assigned ? "true" : "false"}
-    >
-      <img className="opd-flex-associate__pose opd-flex-associate__pose--a" src="/characters/shelf-check-a.png" alt="" />
-      <img className="opd-flex-associate__pose opd-flex-associate__pose--b" src="/characters/shelf-check-b.png" alt="" />
-    </span>
-  );
-}
-
-function ActivePicker({ index }: { index: number }) {
-  const sprites = ["/characters/shelf-check-a.png", "/characters/shelf-check-b.png"];
-  return (
-    <span className={`opd-active-picker opd-active-picker--${index + 1}`}>
-      <img src={sprites[index % sprites.length]} alt="" />
-    </span>
-  );
-}
-
 export function OpdRoomLayer({ data }: { data: OpdDemoState }) {
+  const scene = useStoreScene();
   const incidentActive = data.events.length > 0 || !["normal", "unavailable"].includes(data.phase);
   const associatesVisible = incidentActive
     ? Math.min(MAX_VISUAL_FLEX_ASSOCIATES, data.recoveryContext.availableAssociates)
@@ -165,46 +144,51 @@ export function OpdRoomLayer({ data }: { data: OpdDemoState }) {
   const pickerVisuals = opdPickerVisualCounts(data.operations.currentPickers, associatesAssigned);
   const demandEvent = data.events.find((event) => event.type === "demand_surge");
   const calloutEvent = data.events.find((event) => event.type === "associate_callout");
+  const recovered = data.phase === "recovered";
+  const onPace = ["normal", "recovered"].includes(data.phase);
+  const backlogUnits = data.operations.backlogVisualUnits;
+
+  useEffect(() => {
+    scene?.setOpd({
+      incidentActive,
+      recovered,
+      onPace,
+      backlogUnits,
+      activePickers: pickerVisuals.supplemental,
+      flexVisible: associatesVisible,
+      flexAssigned: associatesAssigned,
+    });
+  }, [scene, incidentActive, recovered, onPace, backlogUnits, pickerVisuals.supplemental, associatesVisible, associatesAssigned]);
+  useEffect(() => () => scene?.setOpd(null), [scene]);
 
   return (
     <div
       className={`opd-room-layer opd-room-layer--${data.phase}`}
       data-reported-pickers={pickerVisuals.reported}
       data-represented-pickers={pickerVisuals.represented}
+      data-active-pickers={pickerVisuals.supplemental}
+      data-backlog-units={backlogUnits}
+      data-flex-associates={associatesVisible}
+      data-flex-assigned={associatesAssigned}
       aria-hidden="true"
     >
-      {incidentActive ? <span className="opd-room-focus" /> : null}
-      <div className="opd-room-kpi">
-        <span>OPD PICKING</span>
-        <strong>{data.operations.currentPickRate.toLocaleString()} / hr</strong>
-        <small>{data.operations.backlog.toLocaleString()} items waiting</small>
-      </div>
-      {incidentActive ? (
-        <div className="opd-room-events">
-          {demandEvent ? <span>+{demandEvent.additionalOrdersDue} orders due</span> : null}
-          {calloutEvent ? <span>−{calloutEvent.pickerReduction} picker</span> : null}
+      <SceneAnchor at={OPD_KPI_LABEL} className="opd-room-label">
+        <div className="opd-room-kpi">
+          <span>OPD PICKING</span>
+          <strong>{data.operations.currentPickRate.toLocaleString()} / hr</strong>
+          <small>{data.operations.backlog.toLocaleString()} items waiting</small>
         </div>
-      ) : null}
-      <div className="opd-backlog" data-visual-units={data.operations.backlogVisualUnits}>
-        {Array.from({ length: data.operations.backlogVisualUnits }, (_, index) => (
-          <span
-            className="opd-backlog__tote"
-            style={{ "--opd-tote-index": index } as CSSProperties}
-            key={`opd-backlog-${index + 1}`}
-          />
-        ))}
-      </div>
-      {Array.from({ length: pickerVisuals.supplemental }, (_, index) => (
-        <ActivePicker index={index} key={`opd-active-picker-${index + 1}`} />
-      ))}
-      {Array.from({ length: associatesVisible }, (_, index) => (
-        <FlexAssociate index={index} assigned={index < associatesAssigned} key={`opd-flex-${index + 1}`} />
-      ))}
+        {incidentActive && (demandEvent || calloutEvent) ? (
+          <div className="opd-room-events">
+            {demandEvent ? <span>+{demandEvent.additionalOrdersDue} orders due</span> : null}
+            {calloutEvent ? <span>−{calloutEvent.pickerReduction} picker</span> : null}
+          </div>
+        ) : null}
+      </SceneAnchor>
       {associatesAssigned > 0 ? (
-        <div className="opd-assignment-path">
-          <span />
+        <SceneAnchor at={OPD_ASSIGNMENT_LABEL} className="opd-assignment-path">
           <strong>{associatesAssigned} flex {associatesAssigned === 1 ? "associate" : "associates"} joining OPD</strong>
-        </div>
+        </SceneAnchor>
       ) : null}
     </div>
   );

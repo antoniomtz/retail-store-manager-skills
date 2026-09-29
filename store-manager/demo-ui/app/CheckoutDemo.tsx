@@ -1,24 +1,16 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CheckoutDemoState, CheckoutPlan } from "./checkout-demo-model.mjs";
 import { unavailableCheckoutState } from "./checkout-demo-model.mjs";
+import { SceneAnchor, useStoreScene } from "./StoreSceneContext";
+import { LANE_TRANSFER_LABEL, REGISTER_SIX_LABEL } from "./store-scene/layout";
 
 const POLL_INTERVAL_MS = 2_000;
 
-const PRIMARY_LANE = [
-  [676, 412, 48], [683, 432, 52], [690, 452, 56], [697, 472, 60],
-  [704, 492, 64], [711, 512, 68], [718, 532, 72], [725, 552, 74],
-  [732, 572, 76], [739, 592, 78], [746, 612, 80], [753, 632, 82],
-] as const;
-
-const SECONDARY_LANE = [
-  [736, 365, 49], [746, 385, 54], [756, 405, 59],
-  [766, 425, 64], [776, 445, 69], [786, 465, 74],
-] as const;
-
-const CUSTOMER_VEST_HUES = [0, 42, 88, 145, 198, 246, 300, 25, 115, 175, 220, 335];
+// The first six customers stay at register 1; when Hermes's approved plan
+// opens another staffed register, the rest move to it.
+const LANE_ONE_CAPACITY_AFTER_SPLIT = 6;
 
 type MutationAction = "reset" | "trigger" | "approve" | "advance";
 
@@ -132,100 +124,45 @@ export function useCheckoutDemo() {
   return { data, loading, busyAction, error, mutate };
 }
 
-function customerPosition(index: number, splitAcrossLanes: boolean) {
-  const firstReassignedCustomer = PRIMARY_LANE.length - SECONDARY_LANE.length;
-  const startingValues = PRIMARY_LANE[index % PRIMARY_LANE.length];
-
-  if (splitAcrossLanes && index >= firstReassignedCustomer) {
-    const reassignedIndex = index - firstReassignedCustomer;
-    return {
-      lane: 2,
-      reassigned: true,
-      reassignedIndex,
-      startingValues,
-      values: SECONDARY_LANE[reassignedIndex % SECONDARY_LANE.length],
-    };
-  }
-  return {
-    lane: 1,
-    reassigned: false,
-    reassignedIndex: -1,
-    startingValues,
-    values: startingValues,
-  };
-}
-
-function CustomerPose({ pose, src }: { pose: "a" | "b"; src: string }) {
-  return (
-    <span className={`checkout-customer__pose checkout-customer__pose--${pose}`}>
-      <img className="checkout-customer__sprite checkout-customer__sprite--tinted" src={src} alt="" />
-      <img className="checkout-customer__sprite checkout-customer__sprite--skin checkout-customer__sprite--face" src={src} alt="" />
-      <img className="checkout-customer__sprite checkout-customer__sprite--skin checkout-customer__sprite--left-hand" src={src} alt="" />
-      <img className="checkout-customer__sprite checkout-customer__sprite--skin checkout-customer__sprite--right-hand" src={src} alt="" />
-    </span>
-  );
-}
-
 export function CheckoutQueueLayer({ data }: { data: CheckoutDemoState }) {
-  const firstReassignedCustomer = PRIMARY_LANE.length - SECONDARY_LANE.length;
+  const scene = useStoreScene();
   const splitAcrossLanes = Boolean(
     data.receipt?.staffedRegistersOpened
     && data.queue.activeStaffedLanes > data.queue.baselineStaffedLanes,
   );
-  const reassignedCustomerCount = splitAcrossLanes
-    ? Math.max(0, data.queue.visiblePeople - firstReassignedCustomer)
-    : 0;
+  const laneOne = splitAcrossLanes
+    ? Math.min(LANE_ONE_CAPACITY_AFTER_SPLIT, data.queue.visiblePeople)
+    : data.queue.visiblePeople;
+  const laneTwo = data.queue.visiblePeople - laneOne;
   const selectedPlanTitle = data.decision?.plans.find((plan) => plan.planId === data.receipt?.planId)?.title
     || "Additional staffed register open";
 
+  useEffect(() => {
+    scene?.setCheckout({ laneOne, laneTwo, laneTwoOpen: splitAcrossLanes });
+  }, [scene, laneOne, laneTwo, splitAcrossLanes]);
+  useEffect(() => () => scene?.setCheckout(null), [scene]);
+
   return (
-    <div className="checkout-queue-layer" aria-hidden="true">
-      {Array.from({ length: data.queue.visiblePeople }, (_, index) => {
-        const { lane, reassigned, reassignedIndex, startingValues, values } = customerPosition(index, splitAcrossLanes);
-        const [x, y, height] = values;
-        const [startX, startY, startHeight] = startingValues;
-        const pathOneX = startX + 34;
-        const pathOneY = startY - 10;
-        const pathTwoX = x + 24;
-        const pathTwoY = y + 16;
-        const style = {
-          "--customer-x": `${(x / 1137) * 100}%`,
-          "--customer-y": `${(y / 909) * 100}%`,
-          "--customer-height": `${(height / 909) * 100}%`,
-          "--customer-start-x": `${(startX / 1137) * 100}%`,
-          "--customer-start-y": `${(startY / 909) * 100}%`,
-          "--customer-start-height": `${(startHeight / 909) * 100}%`,
-          "--customer-path-one-x": `${(pathOneX / 1137) * 100}%`,
-          "--customer-path-one-y": `${(pathOneY / 909) * 100}%`,
-          "--customer-path-two-x": `${(pathTwoX / 1137) * 100}%`,
-          "--customer-path-two-y": `${(pathTwoY / 909) * 100}%`,
-          "--customer-vest-hue": `${CUSTOMER_VEST_HUES[index % CUSTOMER_VEST_HUES.length]}deg`,
-          "--customer-delay": `${-((index * 0.17) % 1.6)}s`,
-          "--customer-move-delay": `${Math.max(0, reassignedIndex) * 240}ms`,
-        } as CSSProperties;
-        return (
-          <span
-            className={`checkout-customer checkout-customer--lane-${lane}${reassigned ? " checkout-customer--reassigned" : ""}`}
-            style={style}
-            key={`checkout-customer-${index + 1}`}
-          >
-            <CustomerPose pose="a" src="/characters/waiting-idle-a.png" />
-            <CustomerPose pose="b" src="/characters/waiting-idle-b.png" />
-          </span>
-        );
-      })}
+    <div
+      className="checkout-queue-layer"
+      data-queue-customers={data.queue.visiblePeople}
+      data-lane-one-customers={laneOne}
+      data-lane-two-customers={laneTwo}
+      aria-hidden="true"
+    >
       {splitAcrossLanes ? (
         <>
-          <div className="checkout-lane-transfer" role="presentation">
-            <span />
-            <strong>
-              Redirecting {reassignedCustomerCount} {reassignedCustomerCount === 1 ? "customer" : "customers"}
-            </strong>
-          </div>
-          <div className="checkout-register-open" role="presentation">
+          {laneTwo > 0 ? (
+            <SceneAnchor at={LANE_TRANSFER_LABEL} className="checkout-lane-transfer">
+              <strong>
+                Redirecting {laneTwo} {laneTwo === 1 ? "customer" : "customers"}
+              </strong>
+            </SceneAnchor>
+          ) : null}
+          <SceneAnchor at={REGISTER_SIX_LABEL} className="checkout-register-open">
             <span className="checkout-register-open__pulse" />
             <strong>{selectedPlanTitle}</strong>
-          </div>
+          </SceneAnchor>
         </>
       ) : null}
     </div>

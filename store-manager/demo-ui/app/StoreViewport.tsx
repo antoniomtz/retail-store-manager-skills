@@ -1,11 +1,9 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
 import {
   useEffect,
   useRef,
   useState,
-  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
@@ -18,6 +16,9 @@ import {
   zoomViewAtPoint,
   ZOOM_STEP,
 } from "./store-view-model.mjs";
+import { StoreSceneContext } from "./StoreSceneContext";
+import type { StoreScene } from "./store-scene/StoreScene";
+import { CHECKOUT_FOCUS, OPD_FOCUS, SPILL } from "./store-scene/layout";
 import {
   CheckoutDemoControls,
   CheckoutQueueLayer,
@@ -52,6 +53,15 @@ type DragState = {
 const INITIAL_VIEW: ViewState = { scale: MIN_SCALE, x: 0, y: 0 };
 const KEYBOARD_PAN_STEP = 40;
 type DemoScenario = "checkout" | "opd" | "incident";
+type SceneStatus = "loading" | "ready" | "unavailable";
+// Each scenario tab frames its part of the store: the point to focus, how
+// closely, and where it should land in the viewport (right of the scenario
+// panel, leaving room for its labels).
+const SCENARIO_FOCUS = {
+  checkout: { x: CHECKOUT_FOCUS.x, y: 0.6, z: CHECKOUT_FOCUS.z, scale: 1.75, left: 0.66, top: 0.5 },
+  opd: { x: OPD_FOCUS.x, y: 1, z: OPD_FOCUS.z, scale: 1.9, left: 0.66, top: 0.46 },
+  incident: { x: SPILL.x, y: 0, z: SPILL.z, scale: 2.2, left: 0.68, top: 0.55 },
+} as const;
 
 function getViewportSize(viewport: HTMLDivElement) {
   return { width: viewport.clientWidth, height: viewport.clientHeight };
@@ -65,9 +75,13 @@ function viewsMatch(first: ViewState, second: ViewState) {
 
 export default function StoreViewport() {
   const viewportRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const sceneRef = useRef<StoreScene | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const [view, setView] = useState<ViewState>(INITIAL_VIEW);
   const [dragging, setDragging] = useState(false);
+  const [scene, setScene] = useState<StoreScene | null>(null);
+  const [sceneStatus, setSceneStatus] = useState<SceneStatus>("loading");
   const [activeScenario, setActiveScenario] = useState<DemoScenario>("checkout");
   const checkoutDemo = useCheckoutDemo();
   const opdDemo = useOpdDemo();
@@ -78,6 +92,7 @@ export default function StoreViewport() {
     if (!viewport) return;
 
     const observer = new ResizeObserver(() => {
+      sceneRef.current?.resize(viewport.clientWidth, viewport.clientHeight);
       setView((current) => {
         const next = clampView(getViewportSize(viewport), current);
         return viewsMatch(current, next) ? current : next;
@@ -118,6 +133,41 @@ export default function StoreViewport() {
     };
   }, []);
 
+  // The 3D store loads after first paint behind a short loading indicator.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const viewport = viewportRef.current;
+    if (!canvas || !viewport) return;
+    const controller = new AbortController();
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    import("./store-scene/StoreScene")
+      .then(({ StoreScene }) => StoreScene.create(canvas, { reducedMotion, signal: controller.signal }))
+      .then((created) => {
+        if (controller.signal.aborted) {
+          created.dispose();
+          return;
+        }
+        // The viewport may have resized while the store was loading.
+        created.resize(viewport.clientWidth, viewport.clientHeight);
+        sceneRef.current = created;
+        setScene(created);
+        setSceneStatus("ready");
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSceneStatus("unavailable");
+      });
+    return () => {
+      controller.abort();
+      sceneRef.current?.dispose();
+      sceneRef.current = null;
+      setScene(null);
+    };
+  }, []);
+
+  useEffect(() => {
+    scene?.setView(view, dragging);
+  }, [scene, view, dragging]);
+
   function changeZoom(direction: -1 | 1) {
     const viewport = viewportRef.current;
     if (!viewport) return;
@@ -138,20 +188,20 @@ export default function StoreViewport() {
   function selectScenario(scenario: DemoScenario) {
     setActiveScenario(scenario);
     const viewport = viewportRef.current;
-    if (!viewport || scenario === "checkout") {
-      setView(INITIAL_VIEW);
-      return;
-    }
+    if (!viewport) return;
 
     const size = getViewportSize(viewport);
-    const scale = Math.min(MAX_SCALE, scenario === "opd" ? 1.45 : 1.3);
-    const roomCenter = scenario === "opd"
-      ? { x: size.width * 0.59, y: size.height * 0.17 }
-      : { x: size.width * 0.67, y: size.height * 0.72 };
+    const focus = SCENARIO_FOCUS[scenario];
+    const scale = Math.min(MAX_SCALE, focus.scale);
+    // Before the store has loaded, zoom about the centre.
+    const roomCenter = scene
+      ? scene.baseScreenPoint(focus.x, focus.y, focus.z)
+      : { x: size.width / 2, y: size.height / 2 };
+    // Zooming maps a 100% point p to centre + (p - centre) * scale + pan.
     setView(clampView(size, {
       scale,
-      x: -(roomCenter.x - size.width / 2) * scale,
-      y: -(roomCenter.y - size.height / 2) * scale,
+      x: size.width * (focus.left - 0.5) - (roomCenter.x - size.width / 2) * scale,
+      y: size.height * (focus.top - 0.5) - (roomCenter.y - size.height / 2) * scale,
     }));
   }
 
@@ -244,14 +294,8 @@ export default function StoreViewport() {
     isPannable ? "store-stage__viewport--pannable" : "",
     dragging ? "store-stage__viewport--dragging" : "",
   ].filter(Boolean).join(" ");
-  const canvasStyle = {
-    "--store-scale": view.scale,
-    "--store-pan-x": `${view.x}px`,
-    "--store-pan-y": `${view.y}px`,
-  } as CSSProperties;
-
   return (
-    <section className="store-stage" aria-label="Animated isometric store layout">
+    <section className="store-stage" aria-label="Animated isometric store layout" data-scene={sceneStatus}>
       <p className="sr-only" id="store-navigation-help">
         Use the zoom controls or scroll over the store to zoom. Once magnified, drag with a mouse or touch, or use the arrow keys to move around the store. Press Home to reset the view.
       </p>
@@ -337,31 +381,29 @@ export default function StoreViewport() {
         onPointerCancel={finishDrag}
         onLostPointerCapture={finishDrag}
       >
-        <div className="store-stage__canvas" style={canvasStyle}>
-          <img
-            className="store-stage__image"
-            src="/store-layout-no-people.png"
-            alt="Isometric retail store with loading dock, aisles, checkout, pickup, produce, and an operations office"
-            draggable={false}
-          />
-          <img
-            className="store-stage__characters store-stage__characters--animated"
-            src="/store-characters-moving.gif?v=cart-loops-3"
-            alt=""
-            aria-hidden="true"
-            draggable={false}
-          />
-          <img
-            className="store-stage__characters store-stage__characters--poster"
-            src="/store-characters-poster.png?v=cart-loops-3"
-            alt=""
-            aria-hidden="true"
-            draggable={false}
-          />
-          {activeScenario === "checkout" ? <CheckoutQueueLayer data={checkoutDemo.data} /> : null}
-          {activeScenario === "opd" ? <OpdRoomLayer data={opdDemo.data} /> : null}
-          {activeScenario === "incident" ? <IncidentMapLayer /> : null}
-        </div>
+        <canvas
+          ref={canvasRef}
+          className="store-stage__scene"
+          role="img"
+          aria-label="3D retail store with receiving, aisles, checkout, pickup, produce, and an operations office, with animated shoppers and associates"
+        />
+        <StoreSceneContext.Provider value={scene}>
+          <div className="store-stage__overlay">
+            {activeScenario === "checkout" ? <CheckoutQueueLayer data={checkoutDemo.data} /> : null}
+            {activeScenario === "opd" ? <OpdRoomLayer data={opdDemo.data} /> : null}
+            {activeScenario === "incident" ? <IncidentMapLayer /> : null}
+          </div>
+        </StoreSceneContext.Provider>
+        {sceneStatus !== "ready" ? (
+          <p className={`store-stage__status store-stage__status--${sceneStatus}`} role="status">
+            {sceneStatus === "loading" ? (
+              <>
+                <span className="store-stage__spinner" aria-hidden="true" />
+                Preparing the store…
+              </>
+            ) : "3D rendering is unavailable in this browser. The scenario controls still work."}
+          </p>
+        ) : null}
       </div>
       {activeScenario === "checkout" ? (
         <div id="checkout-scenario-panel" role="tabpanel" aria-labelledby="checkout-scenario-tab">
