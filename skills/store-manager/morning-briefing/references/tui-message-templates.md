@@ -17,8 +17,9 @@ recommendation rules.
 
 This rendering is optimized for a terminal: use short bullets instead of wide
 tables, keep one fact per line, and make the ranked opening agenda the visual
-focus. Do not emit raw HTML, `<details>` tags, custom emoji IDs, links, media,
-or code fences.
+focus. Use the status markers shown below consistently; do not decorate other
+sentences with extra emoji. Do not emit raw HTML, `<details>` tags, custom
+emoji IDs, links, media, or code fences.
 
 ## Morning briefing
 
@@ -37,14 +38,14 @@ or code fences.
 
 ## 👥 Opening team
 
-- **{{department or grouped departments}}:** {{display_name}} · {{role}} · {{shift}} · {{plain-language on_site or scheduled status}}
+- {{`✅` when on_site; `🕒` when scheduled}} **{{department or grouped departments}}** — {{display_name}}, {{role}} · {{shift}} · {{plain-language on_site or scheduled status}}
 
 ## 🏪 Store readiness
 
-- **Condition:** {{areas_ready}} of {{areas_checked}} areas ready. {{up to two major issues and open overnight carryover, stated once with owner and target time.}}
-- **Coverage:** {{each staffing gap in plain language: department, window, scheduled, needed, and shortage.}}
-- **Availability:** {{unresolved not_in_location count and current rate versus recent average; name the department with the most unresolved detections. Mention a confirmed inventory exception only when it is a ranked priority.}}
-- **Safety:** {{the highest-priority unresolved safety observation or incident and the count of any others needing attention; otherwise state that none need attention.}}
+- {{`✅` when overall_status is ready; `🟠` when attention_needed}} **Condition:** {{areas_ready}} of {{areas_checked}} areas ready · {{plain-language overall_status}}. {{Up to two major issues and open overnight carryover, stated once with owner and target time; say no issues need attention when none are returned.}}
+- 👤 **Coverage:** {{each staffing gap in plain language: department, window, scheduled, needed, and shortage; use `No gaps` when none are returned.}}
+- 📍 **Availability:** {{unresolved not_in_location count and current rate versus recent average; name the department with the most unresolved detections. Mention a confirmed inventory exception only when it is a ranked priority.}}
+- 🛡️ **Safety:** {{the highest-priority unresolved safety observation or incident and the count of any others needing attention; otherwise state that none need attention.}}
 
 ## 📦 OPD and customer service
 

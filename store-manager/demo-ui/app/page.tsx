@@ -4,11 +4,11 @@ import StoreSimulation from "./StoreSimulation";
 export const metadata: Metadata = {
   title: "Retail Agent Platform Demo",
   description:
-    "An animated retail environment paired with live Hermes and NeMo Relay platform telemetry.",
+    "An animated retail environment with current manager priorities and Hermes activity.",
   openGraph: {
     title: "Retail Agent Platform Demo",
     description:
-      "A visual demonstration of Hermes agent activity and the Retail Agent Toolkit telemetry path.",
+      "A visual demonstration of Store Manager priorities and Hermes activity.",
     type: "website",
     images: [
       {
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Retail Agent Platform Demo",
     description:
-      "A visual demonstration of Hermes activity, tools, models, and trace delivery.",
+      "A visual demonstration of Store Manager priorities and Hermes activity.",
     images: ["/store-layout-no-people.png"],
   },
   robots: {

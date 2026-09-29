@@ -8,6 +8,7 @@ services:
       - /app/camel/StoreManagerRoute.java
       - /app/camel/StoreDataRepository.java
       - /app/camel/StoreSnapshotService.java
+      - /app/camel/MorningBriefingPresentationService.java
       - /app/camel/SafetySnapshotService.java
       - /app/camel/OpdOperatingSimulation.java
       - /app/camel/CheckoutQueueSimulation.java
@@ -60,11 +61,14 @@ services:
       PHOENIX_BASE_URL: "http://127.0.0.1:${PHOENIX_PORT:-6006}"
       HERMES_AUXILIARY_VISION_MODEL: "${HERMES_AUXILIARY_VISION_MODEL:-}"
       DEMO_ALLOW_SIMULATED_APPROVAL: "${DEMO_ALLOW_SIMULATED_APPROVAL:-0}"
+      STORE_MANAGER_HERMES_CHAT_ENABLED: "${STORE_MANAGER_ENABLE_CHAT:-1}"
+      HERMES_API_SERVER_PORT: "${HERMES_API_SERVER_PORT:-8642}"
     volumes:
       - "${STORE_MANAGER_STATE_DIR:?Set STORE_MANAGER_STATE_DIR}/store-id:/run/store-manager/store-id:ro"
       - "${STORE_MANAGER_STATE_DIR:?Set STORE_MANAGER_STATE_DIR}/business-date:/run/store-manager/business-date:ro"
       - "${STORE_MANAGER_STATE_DIR:?Set STORE_MANAGER_STATE_DIR}/webhook-port:/run/store-manager/webhook-port:ro"
       - "${STORE_MANAGER_STATE_DIR:?Set STORE_MANAGER_STATE_DIR}/webhook-secret:/run/store-manager/webhook-secret:ro"
+      - "${STORE_MANAGER_STATE_DIR:?Set STORE_MANAGER_STATE_DIR}/hermes-api-key:/run/store-manager/hermes-api-key:ro"
     depends_on:
       camel:
         condition: service_healthy

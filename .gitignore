@@ -4,3 +4,7 @@ __pycache__/
 *.pyc
 store-manager/demo-ui/dist/
 store-manager/demo-ui/node_modules/
+store-manager/demo-ui/.wrangler/
+store-manager/demo-ui/*.tsbuildinfo
+store-manager/demo-ui/test-results/
+store-manager/demo-ui/playwright-report/

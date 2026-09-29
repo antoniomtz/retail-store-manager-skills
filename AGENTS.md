@@ -15,7 +15,7 @@ sequence of improvised configuration commands.
 2. Use read-only checks to confirm the OS, architecture, free disk space,
    Docker Engine, Docker Compose v2, the `hermes` command, Hermes version,
    `~/.hermes/config.yaml`, gateway status, and loopback port availability for
-   `3000`, `6006`, `8644`, and `18080`.
+   `3000`, `6006`, `8642`, `8644`, and `18080`.
 3. Confirm that the user's primary local model already works in Hermes. This
    repository must not change the primary model route.
 4. Summarize the checks and obtain approval before pulling/building images,
@@ -29,8 +29,12 @@ sequence of improvised configuration commands.
 - If Telegram is not configured, run `hermes gateway setup` in the user's
   interactive terminal and let Hermes collect the bot token through its local
   masked prompt. Then run the installer with `--telegram-user-id`.
-- The installer updates only `TELEGRAM_ALLOWED_USERS` and
+- For Telegram, the installer updates only `TELEGRAM_ALLOWED_USERS` and
   `TELEGRAM_HOME_CHANNEL`; it does not read or print the bot token.
+- The installer enables Hermes's loopback API server for the UI Chat tab. It
+  reuses a supported `API_SERVER_KEY` or generates one locally, stores a
+  server-only copy with mode `0600`, and never prints or sends it to the
+  browser.
 
 ## Deployment
 
@@ -55,6 +59,8 @@ auxiliary.vision.model` already returns the intended model.
 The installer:
 
 - starts loopback-only Apache Camel, Phoenix, and the Store Manager UI;
+- enables the dynamic morning-priority dashboard and an authenticated,
+  stateful Hermes chat session in the UI;
 - installs six categorized skills, the Store Manager `USER.md`, the synthetic
   incident image, and one response lifecycle hook under the current Hermes
   home;

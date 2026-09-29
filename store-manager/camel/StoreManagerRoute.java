@@ -15,6 +15,7 @@ public class StoreManagerRoute extends RouteBuilder {
     );
     private final ObjectMapper json = data.mapper();
     private final StoreSnapshotService snapshots = new StoreSnapshotService(data);
+    private final MorningBriefingPresentationService morningPresentations = new MorningBriefingPresentationService(data);
     private final OpdOperatingSimulation opdSimulation = new OpdOperatingSimulation(data);
     private final CheckoutQueueSimulation checkoutSimulation = new CheckoutQueueSimulation(data);
     private final EndOfDaySimulation endOfDaySimulation = new EndOfDaySimulation(data);
@@ -30,6 +31,11 @@ public class StoreManagerRoute extends RouteBuilder {
         from("platform-http:/v1/store-morning-snapshot?httpMethodRestrict=GET")
             .routeId("store-morning-snapshot")
             .process(snapshots::buildSnapshot)
+            .setHeader(Exchange.CONTENT_TYPE, constant("application/json"));
+
+        from("platform-http:/v1/store-morning-briefing-presentation?httpMethodRestrict=GET,POST,DELETE")
+            .routeId("store-morning-briefing-presentation")
+            .process(this::runMorningPresentationRequest)
             .setHeader(Exchange.CONTENT_TYPE, constant("application/json"));
 
         from("platform-http:/v1/store-opd-recovery?httpMethodRestrict=GET")
@@ -188,6 +194,26 @@ public class StoreManagerRoute extends RouteBuilder {
             error(exchange, exception.status, exception.code, exception.getMessage());
         } catch (IOException | RuntimeException exception) {
             error(exchange, 500, "connector_error", "the synthetic incident response planner could not process the request");
+        }
+    }
+
+    private void runMorningPresentationRequest(Exchange exchange) throws Exception {
+        try {
+            String method = exchange.getMessage().getHeader(Exchange.HTTP_METHOD, String.class);
+            ObjectNode result = switch (method == null ? "" : method.toUpperCase()) {
+                case "GET" -> morningPresentations.current(
+                    exchange.getMessage().getHeader("store_id", String.class),
+                    exchange.getMessage().getHeader("business_date", String.class)
+                );
+                case "POST" -> morningPresentations.publish(requestBody(exchange));
+                case "DELETE" -> morningPresentations.clear(requestBody(exchange));
+                default -> throw new SimulationException(405, "method_not_allowed", "unsupported presentation method");
+            };
+            exchange.getMessage().setBody(json.writeValueAsString(result));
+        } catch (SimulationException exception) {
+            error(exchange, exception.status, exception.code, exception.getMessage());
+        } catch (IOException | RuntimeException exception) {
+            error(exchange, 500, "presentation_error", "the morning briefing presentation could not be processed");
         }
     }
 
