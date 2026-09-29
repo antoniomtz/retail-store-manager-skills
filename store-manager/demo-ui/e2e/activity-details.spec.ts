@@ -165,7 +165,7 @@ test("starts a reversible fresh UI view without deleting Phoenix history", async
   await expect(page.getByText("Phoenix history was not deleted.", { exact: false })).toBeVisible();
   await expect(page.getByText(summary)).toBeHidden();
   await expect(page.getByRole("heading", { name: "Opening brief" })).toBeHidden();
-  await expect(page.getByText("Run the morning briefing skill to populate this dashboard.")).toBeVisible();
+  await expect(page.getByText("No morning briefing yet.")).toBeVisible();
 
   await page.reload();
   await expect(page.getByText("Fresh demo view ready")).toBeVisible();

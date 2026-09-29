@@ -15,7 +15,7 @@ const readyState = {
   },
 };
 
-test("streams a UI incident assessment into an accessible dialog", async ({ page }) => {
+test("keeps the incident visible until the operator opens the assessment", async ({ page }) => {
   await page.route("**/api/incident-demo", async (route) => {
     const request = route.request();
     if (request.method() === "POST") {
@@ -51,8 +51,11 @@ test("streams a UI incident assessment into an accessible dialog", async ({ page
   await scenario.getByRole("button", { name: "Trigger store incident" }).click();
 
   const dialog = page.getByRole("dialog", { name: "Hermes incident assessment" });
+  await expect(dialog).toBeHidden();
+  await expect(scenario.locator("img[src='/incident.jpg']")).toBeVisible();
+  await expect(scenario.getByRole("button", { name: "View assessment" })).toBeVisible();
+  await scenario.getByRole("button", { name: "View assessment" }).click();
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText("Image analyzed")).toBeVisible();
   await expect(dialog.getByRole("heading", { name: "Incident assessment", exact: true })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Close assessment" })).toBeFocused();
 
