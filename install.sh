@@ -10,6 +10,7 @@ RUNTIME_ENV="${STATE_DIR}/runtime.env"
 STORE_ID="${STORE_MANAGER_STORE_ID:-SEA-014}"
 BUSINESS_DATE="${STORE_MANAGER_BUSINESS_DATE:-2026-08-03}"
 TELEGRAM_USER_ID="${TELEGRAM_USER_ID:-}"
+TELEGRAM_ENABLED=0
 CAMEL_PORT="${STORE_MANAGER_CAMEL_PORT:-18080}"
 UI_PORT="${STORE_MANAGER_UI_PORT:-3000}"
 PHOENIX_PORT="${PHOENIX_PORT:-6006}"
@@ -23,14 +24,14 @@ VERIFY_ONLY=0
 
 usage() {
   cat <<'EOF'
-Usage: ./install.sh --telegram-user-id ID [options]
+Usage: ./install.sh [--telegram-user-id ID] [options]
        ./install.sh --verify
 
 Installs the synthetic Store Manager package into an existing vanilla Hermes.
 It does not install Hermes, NemoClaw, OpenShell, or a model server.
 
 Options:
-  --telegram-user-id ID    Numeric Telegram user/chat ID (required for install)
+  --telegram-user-id ID    Optional numeric Telegram user/chat ID
   --store-id ID            Synthetic store ID (default: SEA-014)
   --business-date DATE     Synthetic fixture date (default: 2026-08-03)
   --vision-provider NAME   Configure Hermes auxiliary vision provider
@@ -39,8 +40,9 @@ Options:
   --verify                 Run read-only deployment checks
   -h, --help               Show this help
 
-The Telegram bot token must already be configured through Hermes's masked local
-setup. Never pass a bot token or model credential to this script.
+When --telegram-user-id is supplied, the Telegram bot token must already be
+configured through Hermes's masked local setup. Never pass a bot token or model
+credential to this script.
 
 Environment:
   STORE_MANAGER_ENABLE_CHAT  Enable the loopback UI Chat tab (default: 1)
@@ -112,10 +114,18 @@ wait_http() {
 }
 
 verify_deployment() {
-  local chat_enabled chat_status expected_user recorded_api_port telegram_rich telemetry vision_model
+  local chat_enabled chat_status expected_user incident_status recorded_api_port telegram_enabled telegram_json telegram_rich telemetry vision_model
   [[ -r "$RUNTIME_ENV" ]] || die "runtime state is missing; run ./install.sh first"
+  telegram_enabled="$(read_state telegram-enabled)" || die "Telegram delivery state is missing"
+  [[ "$telegram_enabled" == "0" || "$telegram_enabled" == "1" ]] || die "recorded Telegram delivery state is invalid"
   expected_user="$(read_state telegram-user-id)" || die "Telegram target state is missing"
-  [[ "$expected_user" =~ ^-?[0-9]+$ ]] || die "recorded Telegram target is invalid"
+  if [[ "$telegram_enabled" == "1" ]]; then
+    [[ "$expected_user" =~ ^-?[0-9]+$ ]] || die "recorded Telegram target is invalid"
+  else
+    [[ -z "$expected_user" ]] || die "Telegram is disabled but a target is still recorded"
+  fi
+  telegram_json=false
+  [[ "$telegram_enabled" == "1" ]] && telegram_json=true
   chat_enabled="$(read_state chat-enabled)" || die "UI chat state is missing"
   [[ "$chat_enabled" == "0" || "$chat_enabled" == "1" ]] || die "recorded UI chat state is invalid"
   recorded_api_port="$(read_state hermes-api-port)" || die "Hermes API port state is missing"
@@ -137,6 +147,11 @@ verify_deployment() {
     || die "the UI morning-briefing adapter is unavailable"
   chat_status="$(curl -fsS --max-time 10 "http://127.0.0.1:${UI_PORT}/api/hermes-chat")" \
     || die "the UI chat adapter is unavailable"
+  incident_status="$(curl -fsS --max-time 10 "http://127.0.0.1:${UI_PORT}/api/incident-demo")" \
+    || die "the UI incident adapter is unavailable"
+  jq -e --argjson telegram_enabled "$telegram_json" \
+    '.connected == true and .telegramEnabled == $telegram_enabled' <<<"$incident_status" >/dev/null \
+    || die "the UI incident adapter does not match the installed Telegram state"
   if [[ "$chat_enabled" == "1" ]]; then
     jq -e '.enabled == true and .connected == true' <<<"$chat_status" >/dev/null \
       || die "the UI cannot reach the authenticated Hermes Sessions API"
@@ -152,7 +167,7 @@ verify_deployment() {
   done
   [[ -f "$HERMES_HOME/memories/USER.md" ]] || die "the Store Manager USER profile is missing"
   [[ -f "$HERMES_HOME/hooks/store-manager-agent-response-ready/HOOK.yaml" ]] || die "the response lifecycle hook is missing"
-  python3 - "$HERMES_HOME/.env" "$expected_user" "$STATE_DIR/observability/plugins.toml" <<'PY'
+  python3 - "$HERMES_HOME/.env" "$expected_user" "$STATE_DIR/observability/plugins.toml" "$telegram_enabled" <<'PY'
 from pathlib import Path
 import sys
 values = {}
@@ -160,18 +175,21 @@ for line in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
     if "=" in line and not line.lstrip().startswith("#"):
         key, value = line.split("=", 1)
         values[key] = value.strip().strip("'\"")
-if values.get("TELEGRAM_ALLOWED_USERS") != sys.argv[2]:
-    raise SystemExit("Hermes Telegram authorization does not match the Store Manager target")
-if values.get("TELEGRAM_HOME_CHANNEL") != sys.argv[2]:
-    raise SystemExit("Hermes Telegram home channel does not match the Store Manager target")
+if sys.argv[4] == "1":
+    if values.get("TELEGRAM_ALLOWED_USERS") != sys.argv[2]:
+        raise SystemExit("Hermes Telegram authorization does not match the Store Manager target")
+    if values.get("TELEGRAM_HOME_CHANNEL") != sys.argv[2]:
+        raise SystemExit("Hermes Telegram home channel does not match the Store Manager target")
 if values.get("HERMES_NEMO_RELAY_PLUGINS_TOML") != sys.argv[3]:
     raise SystemExit("Hermes does not point to the Store Manager Relay plugin configuration")
 PY
-  telegram_rich="$(hermes config get platforms.telegram.extra.rich_messages 2>/dev/null || true)"
-  [[ "${telegram_rich,,}" == "true" ]] || die "Telegram rich final messages are not enabled"
+  if [[ "$telegram_enabled" == "1" ]]; then
+    telegram_rich="$(hermes config get platforms.telegram.extra.rich_messages 2>/dev/null || true)"
+    [[ "${telegram_rich,,}" == "true" ]] || die "Telegram rich final messages are not enabled"
+  fi
   vision_model="$(hermes config get auxiliary.vision.model 2>/dev/null || true)"
   [[ -n "$vision_model" ]] || die "Hermes auxiliary vision is not configured"
-  "$HERMES_PYTHON" - "$HERMES_HOME/config.yaml" "$HERMES_HOME/.env" "$STATE_DIR/hermes-api-key" "$WEBHOOK_PORT" "$HERMES_API_PORT" "$chat_enabled" <<'PY'
+  "$HERMES_PYTHON" - "$HERMES_HOME/config.yaml" "$HERMES_HOME/.env" "$STATE_DIR/hermes-api-key" "$WEBHOOK_PORT" "$HERMES_API_PORT" "$telegram_enabled" <<'PY'
 import sys, yaml
 from pathlib import Path
 config = yaml.safe_load(Path(sys.argv[1]).read_text(encoding="utf-8")) or {}
@@ -182,34 +200,36 @@ if webhook.get("enabled") is not True or extra.get("host") != "127.0.0.1" or int
 webhook_tools = set(config.get("platform_toolsets", {}).get("webhook", []))
 if not {"terminal", "skills", "vision"}.issubset(webhook_tools):
     raise SystemExit("Hermes webhook toolsets are incomplete")
-if "clarify" not in set(config.get("platform_toolsets", {}).get("telegram", [])):
+if sys.argv[6] == "1" and "clarify" not in set(config.get("platform_toolsets", {}).get("telegram", [])):
     raise SystemExit("Telegram clarify buttons are not enabled")
-if sys.argv[6] == "1":
-    values = {}
-    for line in Path(sys.argv[2]).read_text(encoding="utf-8").splitlines():
-        if "=" in line and not line.lstrip().startswith("#"):
-            key, value = line.removeprefix("export ").split("=", 1)
-            values.setdefault(key.strip(), []).append(value.strip().strip("'\""))
-    key_file = Path(sys.argv[3])
-    api_keys = values.get("API_SERVER_KEY", [])
-    if not key_file.is_file() or len(api_keys) != 1 or key_file.read_text(encoding="utf-8").strip() != api_keys[0]:
-        raise SystemExit("Hermes API credential state does not match the gateway")
-    if values.get("API_SERVER_ENABLED") != ["true"] or values.get("API_SERVER_HOST") != ["127.0.0.1"]:
-        raise SystemExit("Hermes API server is not enabled on loopback")
-    if values.get("API_SERVER_PORT") != [sys.argv[5]]:
-        raise SystemExit("Hermes API server port does not match the Store Manager runtime")
-    api_tools = set(config.get("platform_toolsets", {}).get("api_server", []))
-    if not {"terminal", "skills", "vision"}.issubset(api_tools):
-        raise SystemExit("Hermes API server toolsets are incomplete")
+values = {}
+for line in Path(sys.argv[2]).read_text(encoding="utf-8").splitlines():
+    if "=" in line and not line.lstrip().startswith("#"):
+        key, value = line.removeprefix("export ").split("=", 1)
+        values.setdefault(key.strip(), []).append(value.strip().strip("'\""))
+key_file = Path(sys.argv[3])
+api_keys = values.get("API_SERVER_KEY", [])
+if not key_file.is_file() or len(api_keys) != 1 or key_file.read_text(encoding="utf-8").strip() != api_keys[0]:
+    raise SystemExit("Hermes API credential state does not match the gateway")
+if values.get("API_SERVER_ENABLED") != ["true"] or values.get("API_SERVER_HOST") != ["127.0.0.1"]:
+    raise SystemExit("Hermes API server is not enabled on loopback")
+if values.get("API_SERVER_PORT") != [sys.argv[5]]:
+    raise SystemExit("Hermes API server port does not match the Store Manager runtime")
+api_tools = set(config.get("platform_toolsets", {}).get("api_server", []))
+if not {"terminal", "skills", "vision"}.issubset(api_tools):
+    raise SystemExit("Hermes API server toolsets are incomplete")
 PY
-  "$HERMES_PYTHON" - "$HERMES_HOME/webhook_subscriptions.json" "$expected_user" <<'PY'
+  "$HERMES_PYTHON" - "$HERMES_HOME/webhook_subscriptions.json" "$expected_user" "$telegram_enabled" <<'PY'
 import json, sys
 from pathlib import Path
 routes = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 for name in ("opd-surge", "checkout-queue", "store-incident"):
     route = routes.get(name, {})
-    if route.get("deliver") != "telegram" or route.get("deliver_extra", {}).get("chat_id") != sys.argv[2]:
-        raise SystemExit(f"invalid webhook delivery target for {name}")
+    if sys.argv[3] == "1":
+        if route.get("deliver") != "telegram" or route.get("deliver_extra", {}).get("chat_id") != sys.argv[2]:
+            raise SystemExit(f"invalid Telegram delivery target for {name}")
+    elif route.get("deliver") != "log" or route.get("deliver_extra") not in (None, {}):
+        raise SystemExit(f"invalid local log delivery target for {name}")
 PY
   systemctl --user is-active --quiet hermes-gateway.service || die "the Hermes gateway user service is not active"
 
@@ -236,9 +256,15 @@ if [[ "$VERIFY_ONLY" -eq 1 ]]; then
   exit 0
 fi
 
-[[ "$TELEGRAM_USER_ID" =~ ^-?[0-9]+$ ]] || die "--telegram-user-id must be one numeric Telegram user ID"
 [[ -f "$HERMES_HOME/.env" ]] || die "Hermes .env is missing; run 'hermes gateway setup' locally first"
-grep -Eq '^TELEGRAM_BOT_TOKEN=.+$' "$HERMES_HOME/.env" || die "Telegram is not configured; run 'hermes gateway setup' and enter the bot token in its masked prompt"
+if [[ -n "$TELEGRAM_USER_ID" ]]; then
+  [[ "$TELEGRAM_USER_ID" =~ ^-?[0-9]+$ ]] || die "--telegram-user-id must be one numeric Telegram user ID"
+  grep -Eq '^TELEGRAM_BOT_TOKEN=.+$' "$HERMES_HOME/.env" \
+    || die "Telegram is not configured; run 'hermes gateway setup' and enter the bot token in its masked prompt"
+  TELEGRAM_ENABLED=1
+else
+  printf '%s\n' "Warning: Telegram delivery is not configured. Installation will continue with incident output in the Store Manager UI; Telegram notifications and manager action buttons will be unavailable." >&2
+fi
 if [[ -n "$VISION_PROVIDER$VISION_MODEL$VISION_BASE_URL" ]]; then
   [[ -n "$VISION_PROVIDER" && -n "$VISION_MODEL" && -n "$VISION_BASE_URL" ]] || die "all three --vision-* options must be supplied together"
   [[ "$VISION_BASE_URL" =~ ^https?:// ]] || die "the vision base URL must be HTTP or HTTPS"
@@ -252,22 +278,20 @@ printf '%s\n' 127.0.0.1 >"$STATE_DIR/service-host"
 printf '%s\n' "$WEBHOOK_PORT" >"$STATE_DIR/webhook-port"
 printf '%s\n' "$CHAT_ENABLED" >"$STATE_DIR/chat-enabled"
 printf '%s\n' "$HERMES_API_PORT" >"$STATE_DIR/hermes-api-port"
+printf '%s\n' "$TELEGRAM_ENABLED" >"$STATE_DIR/telegram-enabled"
 printf '%s\n' "$TELEGRAM_USER_ID" >"$STATE_DIR/telegram-user-id"
 if [[ ! -s "$STATE_DIR/webhook-secret" ]]; then
   openssl rand -hex 32 >"$STATE_DIR/webhook-secret"
 fi
-chmod 600 "$STATE_DIR/webhook-secret" "$STATE_DIR/telegram-user-id"
-if [[ "$CHAT_ENABLED" == "1" ]]; then
-  python3 "$REPO_DIR/scripts/configure-hermes-api.py" \
-    "$HERMES_HOME/.env" "$STATE_DIR/hermes-api-key" --port "$HERMES_API_PORT"
-else
-  (umask 077; : >"$STATE_DIR/hermes-api-key")
-fi
+chmod 600 "$STATE_DIR/webhook-secret" "$STATE_DIR/telegram-enabled" "$STATE_DIR/telegram-user-id"
+python3 "$REPO_DIR/scripts/configure-hermes-api.py" \
+  "$HERMES_HOME/.env" "$STATE_DIR/hermes-api-key" --port "$HERMES_API_PORT"
 UI_SOURCE_HASH="$(find "$REPO_DIR/store-manager/demo-ui" -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)"
 VISION_MODEL_EFFECTIVE="$VISION_MODEL"
 if [[ -z "$VISION_MODEL_EFFECTIVE" ]]; then
   VISION_MODEL_EFFECTIVE="$(hermes config get auxiliary.vision.model 2>/dev/null || true)"
 fi
+INCIDENT_IMAGE="$HERMES_HOME/skills/store-manager/store-incident-response/assets/incident.jpg"
 cat >"$RUNTIME_ENV" <<EOF
 STORE_MANAGER_STATE_DIR=${STATE_DIR}
 STORE_MANAGER_HOST_UID=$(id -u)
@@ -280,6 +304,8 @@ STORE_MANAGER_UI_SOURCE_HASH=${UI_SOURCE_HASH}
 HERMES_AUXILIARY_VISION_MODEL=${VISION_MODEL_EFFECTIVE}
 DEMO_ALLOW_SIMULATED_APPROVAL=0
 STORE_MANAGER_ENABLE_CHAT=${CHAT_ENABLED}
+STORE_MANAGER_TELEGRAM_ENABLED=${TELEGRAM_ENABLED}
+STORE_MANAGER_INCIDENT_IMAGE_PATH=${INCIDENT_IMAGE}
 HERMES_API_SERVER_PORT=${HERMES_API_PORT}
 EOF
 chmod 600 "$RUNTIME_ENV"
@@ -326,12 +352,14 @@ jq -n --arg endpoint "$BASE_URL/v1/store-incident-response-plans" --arg store_id
 jq -n --arg status_endpoint "$BASE_URL/v1/store-opd-operating-state" --arg message_ready_endpoint "$BASE_URL/v1/store-opd-manager-message" --arg store_id "$STORE_ID" --arg business_date "$BUSINESS_DATE" '{status_endpoint:$status_endpoint,message_ready_endpoint:$message_ready_endpoint,store_id:$store_id,business_date:$business_date}' >"$HOOK_DEST/config.json"
 chmod 644 "$HERMES_HOME/memories/USER.md" "$HOOK_DEST/HOOK.yaml" "$HOOK_DEST/handler.py" "$HOOK_DEST/config.json" "$SKILLS_DEST"/*/config.json
 
-say "Configuring Telegram authorization and auxiliary vision"
-python3 "$REPO_DIR/scripts/update-hermes-env.py" "$HERMES_HOME/.env" \
-  "TELEGRAM_ALLOWED_USERS=$TELEGRAM_USER_ID" "TELEGRAM_HOME_CHANNEL=$TELEGRAM_USER_ID"
-hermes config set platforms.telegram.enabled true
-hermes config set platforms.telegram.extra.rich_messages true
-hermes config set platforms.telegram.extra.rich_drafts false
+say "Configuring optional Telegram delivery and auxiliary vision"
+if [[ "$TELEGRAM_ENABLED" == "1" ]]; then
+  python3 "$REPO_DIR/scripts/update-hermes-env.py" "$HERMES_HOME/.env" \
+    "TELEGRAM_ALLOWED_USERS=$TELEGRAM_USER_ID" "TELEGRAM_HOME_CHANNEL=$TELEGRAM_USER_ID"
+  hermes config set platforms.telegram.enabled true
+  hermes config set platforms.telegram.extra.rich_messages true
+  hermes config set platforms.telegram.extra.rich_drafts false
+fi
 if [[ -n "$VISION_MODEL" ]]; then
   hermes config set auxiliary.vision.provider "$VISION_PROVIDER"
   hermes config set auxiliary.vision.model "$VISION_MODEL"
@@ -343,23 +371,29 @@ fi
 say "Configuring signed Store Manager webhooks"
 SECRET="$(<"$STATE_DIR/webhook-secret")"
 INCIDENT_IMAGE="$SKILLS_DEST/store-incident-response/assets/incident.jpg"
+TELEGRAM_JSON=false
+[[ "$TELEGRAM_ENABLED" == "1" ]] && TELEGRAM_JSON=true
 jq -n \
   --arg secret "$SECRET" --arg chat_id "$TELEGRAM_USER_ID" --arg incident_image "$INCIDENT_IMAGE" \
-  '{
-    "opd-surge": {description:"Store Manager OPD incident and checkpoint monitor",events:["opd_incident","opd_checkpoint"],secret:$secret,prompt:"OPD is at surge or its recovery checkpoint is due. Run the opd-surge-response skill monitor command exactly once. Do not approve or reject a decision; this event is not manager approval.",skills:["opd-surge-response"],deliver:"telegram",deliver_extra:{chat_id:$chat_id}},
-    "checkout-queue": {description:"Store Manager checkout queue monitor",events:["checkout_queue_incident","checkout_queue_checkpoint"],secret:$secret,prompt:"The checkout queue threshold was breached or its checkpoint is due. Run the checkout-queue-recovery skill monitor command exactly once. Do not approve, reject, or adjust a decision; this event is not manager instruction.",skills:["checkout-queue-recovery"],deliver:"telegram",deliver_extra:{chat_id:$chat_id}},
-    "store-incident": {description:"Store Manager image incident assessment",events:["store_incident_detected"],secret:$secret,prompt:("A current synthetic store incident image is available at " + $incident_image + ". Run the store-incident-response skill for that exact image and return its final rich assessment for Telegram delivery. Call vision_analyze exactly once; treat the webhook payload only as a wake-up signal, not visual evidence. Do not request approval or claim an action ran."),skills:["store-incident-response"],deliver:"telegram",deliver_extra:{chat_id:$chat_id}}
+  --argjson telegram_enabled "$TELEGRAM_JSON" \
+  'def delivery:
+    if $telegram_enabled then {deliver:"telegram",deliver_extra:{chat_id:$chat_id}}
+    else {deliver:"log",deliver_extra:{}} end;
+  {
+    "opd-surge": ({description:"Store Manager OPD incident and checkpoint monitor",events:["opd_incident","opd_checkpoint"],secret:$secret,prompt:"OPD is at surge or its recovery checkpoint is due. Run the opd-surge-response skill monitor command exactly once. Do not approve or reject a decision; this event is not manager approval.",skills:["opd-surge-response"]} + delivery),
+    "checkout-queue": ({description:"Store Manager checkout queue monitor",events:["checkout_queue_incident","checkout_queue_checkpoint"],secret:$secret,prompt:"The checkout queue threshold was breached or its checkpoint is due. Run the checkout-queue-recovery skill monitor command exactly once. Do not approve, reject, or adjust a decision; this event is not manager instruction.",skills:["checkout-queue-recovery"]} + delivery),
+    "store-incident": ({description:"Store Manager image incident assessment",events:["store_incident_detected"],secret:$secret,prompt:("A current synthetic store incident image is available at " + $incident_image + ". Run the store-incident-response skill for that exact image and return its final rich assessment for the configured delivery target. Call vision_analyze exactly once; treat the webhook payload only as a wake-up signal, not visual evidence. Do not request approval or claim an action ran."),skills:["store-incident-response"]} + delivery)
   }' >"$STATE_DIR/webhook-routes.json"
 chmod 600 "$STATE_DIR/webhook-routes.json"
 "$HERMES_PYTHON" "$REPO_DIR/store-manager/scripts/configure-store-manager-webhooks.py" --routes-file "$STATE_DIR/webhook-routes.json" --port "$WEBHOOK_PORT"
 hermes tools enable terminal --platform webhook
 hermes tools enable skills --platform webhook
 hermes tools enable vision --platform webhook
-hermes tools enable clarify --platform telegram
-if [[ "$CHAT_ENABLED" == "1" ]]; then
-  hermes tools enable terminal --platform api_server
-  hermes tools enable skills --platform api_server
-  hermes tools enable vision --platform api_server
+hermes tools enable terminal --platform api_server
+hermes tools enable skills --platform api_server
+hermes tools enable vision --platform api_server
+if [[ "$TELEGRAM_ENABLED" == "1" ]]; then
+  hermes tools enable clarify --platform telegram
 fi
 
 say "Activating Hermes native NeMo Relay export to Phoenix"
@@ -408,4 +442,8 @@ else
 fi
 
 verify_deployment
-printf '\nSend /reset once in the Telegram conversation before testing approval flows.\n'
+if [[ "$TELEGRAM_ENABLED" == "1" ]]; then
+  printf '\nSend /reset once in the Telegram conversation before testing approval flows.\n'
+else
+  printf '\nTelegram delivery is disabled. Use the Store incident UI assessment; reinstall with --telegram-user-id to enable notifications and manager action buttons.\n'
+fi

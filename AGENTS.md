@@ -21,17 +21,21 @@ sequence of improvised configuration commands.
 4. Summarize the checks and obtain approval before pulling/building images,
    writing Hermes configuration, restarting the gateway, or starting services.
 
-## Telegram and credentials
+## Optional Telegram and credentials
 
-- The deployment requires one numeric Telegram user ID.
+- Telegram is optional. Without `--telegram-user-id`, incident assessments are
+  available in the UI; Telegram notifications and manager action buttons are
+  unavailable.
 - Never ask the user to paste a bot token, API key, password, or private
   endpoint into chat, source, a command argument, documentation, or a commit.
-- If Telegram is not configured, run `hermes gateway setup` in the user's
-  interactive terminal and let Hermes collect the bot token through its local
-  masked prompt. Then run the installer with `--telegram-user-id`.
+- When the user requests Telegram and it is not configured, run `hermes gateway
+  setup` in the user's interactive terminal and let Hermes collect the bot
+  token through its local masked prompt. Then run the installer with
+  `--telegram-user-id`.
 - For Telegram, the installer updates only `TELEGRAM_ALLOWED_USERS` and
   `TELEGRAM_HOME_CHANNEL`; it does not read or print the bot token.
-- The installer enables Hermes's loopback API server for the UI Chat tab. It
+- The installer enables Hermes's loopback API server for UI incident assessment
+  and the optional Chat tab. It
   reuses a supported `API_SERVER_KEY` or generates one locally, stores a
   server-only copy with mode `0600`, and never prints or sends it to the
   browser.
@@ -46,15 +50,13 @@ credential is needed.
 Run:
 
 ```bash
-./install.sh \
-  --telegram-user-id <NUMERIC_ID> \
-  --vision-provider <PROVIDER> \
-  --vision-model <MODEL_ID> \
-  --vision-base-url <OPENAI_COMPATIBLE_API_BASE>
+./install.sh
 ```
 
-Omit the three vision flags only when `hermes config get
-auxiliary.vision.model` already returns the intended model.
+Add `--telegram-user-id <NUMERIC_ID>` only when Telegram delivery is requested.
+Add all three `--vision-provider`, `--vision-model`, and `--vision-base-url`
+flags only when `hermes config get auxiliary.vision.model` does not already
+return the intended model.
 
 The installer:
 
@@ -64,10 +66,10 @@ The installer:
 - installs six categorized skills, the Store Manager `USER.md`, the synthetic
   incident image, and one response lifecycle hook under the current Hermes
   home;
-- configures three HMAC-signed loopback webhooks targeting the specified
-  Telegram user;
-- enables the webhook terminal, skills, and vision toolsets plus Telegram
-  clarify buttons;
+- configures three HMAC-signed loopback webhooks with Telegram delivery when a
+  user ID is supplied and local log delivery otherwise;
+- enables the webhook and API-server terminal, skills, and vision toolsets,
+  plus Telegram clarify buttons only when Telegram is enabled;
 - activates the NeMo Relay observability plugin already bundled with supported
   vanilla Hermes versions; and
 - restarts the existing Hermes gateway.
@@ -84,19 +86,21 @@ Run:
 ```
 
 Treat a failed check as a diagnosis target. Do not bypass webhook
-authentication, Telegram authorization, vision configuration, or the
+authentication, configured Telegram authorization, vision configuration, or the
 metadata-only Relay exporter. Relay/Phoenix are outside inference; an
 observability failure must not break Hermes inference.
 
-For the final synthetic canary, trigger the Store incident control in the UI
-and confirm:
+For the final synthetic canary, trigger the Store incident control with UI
+delivery and confirm:
 
-- Telegram receives the completed advisory;
+- the UI streams filtered Hermes tool progress and renders the completed rich
+  advisory in its dialog;
 - `/api/platform-telemetry` reports Phoenix connected;
 - Relay and OpenInference become active or recent; and
 - the plain-language view contains a completed `hermes.turn` activity.
 
-Send `/reset` once in the Telegram conversation after a fresh installation.
+If Telegram was requested, also verify its delivery and send `/reset` once in
+that conversation after a fresh installation.
 
 ## Data boundary
 

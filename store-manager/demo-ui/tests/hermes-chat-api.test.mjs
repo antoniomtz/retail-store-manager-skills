@@ -63,6 +63,14 @@ test("proxies one isolated Hermes session and strips sensitive tool details", as
         outgoing.write('event: tool.completed\ndata: {"tool_name":"skill_view"}\n\n');
         outgoing.write('event: assistant.completed\ndata: {"content":"## Opening priorities"}\n\n');
         outgoing.end('event: done\ndata: {}\n\n');
+      } else if (incoming.method === "POST" && incoming.url?.match(/^\/api\/sessions\/retail_incident_[^/]+\/chat\/stream$/)) {
+        outgoing.writeHead(200, { "content-type": "text/event-stream" });
+        outgoing.write('event: tool.started\ndata: {"tool_name":"vision_analyze","args":{"path":"must-not-escape"}}\n\n');
+        outgoing.write('event: tool.completed\ndata: {"tool_name":"vision_analyze"}\n\n');
+        outgoing.write(`event: assistant.delta\ndata: ${JSON.stringify({ delta: "§".repeat(24 * 1024) })}\n\n`);
+        outgoing.write(`event: assistant.delta\ndata: ${JSON.stringify({ delta: "¤".repeat(24 * 1024) })}\n\n`);
+        outgoing.write('event: assistant.completed\ndata: {"content":"# Store incident\\n\\n| Role | Assignment |\\n|---|---|\\n| Lead | Secure area |"}\n\n');
+        outgoing.end('event: done\ndata: {}\n\n');
       } else {
         outgoing.writeHead(404, { "content-type": "application/json" });
         outgoing.end(JSON.stringify({ error: "not_found" }));
@@ -80,10 +88,12 @@ test("proxies one isolated Hermes session and strips sensitive tool details", as
     STORE_MANAGER_HERMES_CHAT_ENABLED: process.env.STORE_MANAGER_HERMES_CHAT_ENABLED,
     HERMES_API_SERVER_KEY: process.env.HERMES_API_SERVER_KEY,
     HERMES_API_SERVER_PORT: process.env.HERMES_API_SERVER_PORT,
+    STORE_MANAGER_INCIDENT_IMAGE_PATH: process.env.STORE_MANAGER_INCIDENT_IMAGE_PATH,
   };
   process.env.STORE_MANAGER_HERMES_CHAT_ENABLED = "1";
   process.env.HERMES_API_SERVER_KEY = key;
   process.env.HERMES_API_SERVER_PORT = String(address.port);
+  process.env.STORE_MANAGER_INCIDENT_IMAGE_PATH = "/home/test/.hermes/skills/store-manager/store-incident-response/assets/incident.jpg";
 
   try {
     const status = await request("/api/hermes-chat");
@@ -104,6 +114,16 @@ test("proxies one isolated Hermes session and strips sensitive tool details", as
     const stream = await turn.text();
     assert.match(stream, /skill_view|Opening priorities/);
     assert.doesNotMatch(stream, /must-not-escape|\/private\/path|secret/);
+
+    const incident = await request("/api/incident-demo/stream", { method: "POST" });
+    assert.equal(incident.status, 200);
+    const incidentStream = await incident.text();
+    assert.match(incidentStream, /vision_analyze|Store incident/);
+    assert.doesNotMatch(incidentStream, /must-not-escape|args|path/);
+    assert.equal(
+      [...incidentStream].filter((character) => character === "§" || character === "¤").length,
+      32 * 1024,
+    );
     assert.equal(requests.every((item) => item.authorization === `Bearer ${key}`), true);
   } finally {
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));

@@ -19,11 +19,12 @@ management, Switchyard, OpenViking, or the original toolkit bootstrap.
   configured.
 - Docker Engine and Docker Compose v2.
 - `bash`, `curl`, `jq`, `openssl`, `python3`, and `sha256sum`.
-- A Telegram bot configured in Hermes and exactly one numeric Telegram user ID.
+- Optional: a Telegram bot configured in Hermes and one numeric Telegram user
+  ID for notifications and manager action buttons.
 - Hermes auxiliary vision configured to a vision-capable model. A local
   OpenAI-compatible model endpoint is supported.
 
-Configure a missing Telegram bot locally with:
+To enable Telegram, configure the bot locally with:
 
 ```bash
 hermes gateway setup
@@ -34,7 +35,13 @@ or a command argument.
 
 ## Install
 
-If auxiliary vision is already configured:
+If auxiliary vision is already configured, install with UI delivery only:
+
+```bash
+./install.sh
+```
+
+Add Telegram delivery when needed:
 
 ```bash
 ./install.sh --telegram-user-id <NUMERIC_TELEGRAM_USER_ID>
@@ -44,7 +51,6 @@ To configure auxiliary vision at the same time:
 
 ```bash
 ./install.sh \
-  --telegram-user-id <NUMERIC_TELEGRAM_USER_ID> \
   --vision-provider custom \
   --vision-model <VISION_MODEL_ID> \
   --vision-base-url http://127.0.0.1:8000/v1
@@ -54,15 +60,16 @@ The defaults are store `SEA-014`, fixture date `2026-08-03`, UI port `3000`,
 Phoenix port `6006`, Hermes API port `8642`, Hermes webhook port `8644`, and
 Camel port `18080`. All listeners remain on `127.0.0.1`.
 
-The installer enables vanilla Hermes's authenticated loopback API server and
-the UI Chat tab by default. It reuses an existing strong `API_SERVER_KEY` or
+The installer enables vanilla Hermes's authenticated loopback API server for
+UI incident assessment and enables the Chat tab by default. It reuses an
+existing strong `API_SERVER_KEY` or
 creates a random 64-character key when none exists. The key remains in the
 mode-`0600` Hermes environment and package state; it is mounted read-only into
 the UI server and never sent to the browser. Disable chat explicitly with:
 
 ```bash
 STORE_MANAGER_ENABLE_CHAT=0 \
-  ./install.sh --telegram-user-id <NUMERIC_TELEGRAM_USER_ID>
+  ./install.sh
 ```
 
 Verify without changing the deployment:
@@ -76,13 +83,18 @@ Open:
 - Store Manager UI: http://127.0.0.1:3000
 - Phoenix: http://127.0.0.1:6006
 
-After a fresh install, send `/reset` once to the Telegram bot.
+When Telegram is configured, send `/reset` once to the bot after a fresh
+install.
 
 The UI opens on the Dashboard tab. A successful morning briefing publishes its
 one-to-four current manager priorities to that dashboard. Reset clears only
 the UI presentation and telemetry window; it does not delete Phoenix traces.
 The Chat tab maintains one Hermes session per browser tab and includes example
 prompts for the morning briefing, current priorities, OPD, and checkout.
+The Store incident tab defaults to UI delivery: it runs an isolated Hermes
+session, displays filtered tool progress, and streams the rich assessment into
+a closeable dialog. Telegram is selectable only when `--telegram-user-id` was
+provided during installation.
 
 ## Copy/paste prompt for Codex
 
@@ -100,33 +112,35 @@ change my working primary model route.
 
 First perform read-only checks for the OS/architecture, free disk space,
 Docker and Docker Compose, Hermes version and home, gateway status, the current
-primary model, auxiliary vision configuration, Telegram configuration presence,
+primary model, auxiliary vision configuration, optional Telegram configuration,
 and whether loopback ports 3000, 6006, 8642, 8644, and 18080 are available. Summarize
 the result and ask for my approval before pulling/building images, changing
 Hermes configuration, restarting the gateway, or starting containers.
 
 Never ask me to paste a bot token, API key, password, or other credential in
-chat. If the Telegram bot token is missing, launch `hermes gateway setup` in my
-interactive terminal so Hermes collects it through its masked local prompt.
-Ask me only for the numeric Telegram user ID if you cannot determine it safely.
+chat. Telegram is optional. If I request Telegram delivery and its bot token is
+missing, launch `hermes gateway setup` in my interactive terminal so Hermes
+collects it through its masked local prompt. Ask me only for the numeric
+Telegram user ID if I request Telegram and you cannot determine it safely.
 
 Use my existing auxiliary vision configuration if it is valid. Otherwise use
 the local OpenAI-compatible vision endpoint and model I provide, without
-changing the primary model. Then run the repository's ./install.sh with the
-numeric Telegram ID and, only if needed, all three --vision-provider,
---vision-model, and --vision-base-url options. Do not substitute manual file
-copies or custom Docker commands for the installer.
+changing the primary model. Then run the repository's ./install.sh and, only if
+needed, all three --vision-provider, --vision-model, and --vision-base-url
+options. Add --telegram-user-id only if I request Telegram delivery. Do not
+substitute manual file copies or custom Docker commands for the installer.
 
 Allow the installer to enable Hermes's authenticated API server on loopback for
-the Store Manager Chat tab. Do not print or request its API key, enable browser
-CORS, or expose the API server directly.
+the Store Manager incident workflow and Chat tab. Do not print or request its
+API key, enable browser CORS, or expose the API server directly.
 
 After installation, run `./install.sh --verify`. Open or report the loopback UI
 at http://127.0.0.1:3000 and Phoenix at http://127.0.0.1:6006. Trigger one
-synthetic Store incident from the UI, wait for the Hermes webhook turn to
-finish, and verify that Telegram receives the advisory and the UI telemetry API
-shows Phoenix connected, Relay/OpenInference active or recent, and at least one
-completed plain-language Hermes activity. If telemetry is arriving but the
+synthetic Store incident with UI delivery, wait for Hermes to finish, and
+verify that the rich assessment appears in the UI dialog. If Telegram was
+requested, verify Telegram delivery separately. Confirm that the UI telemetry
+API shows Phoenix connected, Relay/OpenInference active or recent, and at least
+one completed plain-language Hermes activity. If telemetry is arriving but the
 plain-language activity is empty, check for the `hermes.turn` compatibility
 already included in this repository rather than repinning Relay.
 
