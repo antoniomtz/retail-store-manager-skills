@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -32,6 +32,13 @@ type StreamEvent = {
   session_id?: string;
   content?: string;
   tool_name?: string;
+};
+
+type RequestedPrompt = { id: string; text: string };
+
+type HermesChatProps = {
+  requestedPrompt?: RequestedPrompt | null;
+  onRequestedPromptConsumed?: (id: string) => void;
 };
 
 function toolLabel(name: string) {
@@ -86,7 +93,10 @@ function RichMessage({ children }: { children: string }) {
   );
 }
 
-export default function HermesChat() {
+export default function HermesChat({
+  requestedPrompt = null,
+  onRequestedPromptConsumed,
+}: HermesChatProps) {
   const [status, setStatus] = useState<ChatStatus>("checking");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -96,6 +106,7 @@ export default function HermesChat() {
   const [steps, setSteps] = useState<ChatStep[]>([]);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const consumedPromptRef = useRef<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -150,9 +161,8 @@ export default function HermesChat() {
     setError(null);
   }
 
-  async function sendMessage(event?: FormEvent, starterPrompt?: string) {
-    event?.preventDefault();
-    const message = (starterPrompt ?? input).trim();
+  const submitMessage = useCallback(async (value: string) => {
+    const message = value.trim();
     if (!message || running || status !== "ready") return;
 
     const userMessage: ChatMessage = {
@@ -235,12 +245,32 @@ export default function HermesChat() {
     } finally {
       setRunning(false);
     }
+  }, [running, sessionId, status]);
+
+  useEffect(() => {
+    if (
+      !requestedPrompt
+      || status === "checking"
+      || running
+      || consumedPromptRef.current === requestedPrompt.id
+    ) return;
+    const frame = window.requestAnimationFrame(() => {
+      consumedPromptRef.current = requestedPrompt.id;
+      onRequestedPromptConsumed?.(requestedPrompt.id);
+      if (status === "ready") void submitMessage(requestedPrompt.text);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [onRequestedPromptConsumed, requestedPrompt, running, status, submitMessage]);
+
+  function sendMessage(event: FormEvent) {
+    event.preventDefault();
+    void submitMessage(input);
   }
 
   function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      void sendMessage();
+      void submitMessage(input);
     }
   }
 
@@ -283,7 +313,7 @@ export default function HermesChat() {
                 <button
                   type="button"
                   key={prompt}
-                  onClick={() => void sendMessage(undefined, prompt)}
+                  onClick={() => void submitMessage(prompt)}
                 >
                   {prompt}
                 </button>
@@ -322,7 +352,7 @@ export default function HermesChat() {
         </div>
       </div>
 
-      <form className="chat-composer" onSubmit={(event) => void sendMessage(event)}>
+      <form className="chat-composer" onSubmit={sendMessage}>
         <label className="sr-only" htmlFor="hermes-chat-input">Message Hermes</label>
         <textarea
           id="hermes-chat-input"

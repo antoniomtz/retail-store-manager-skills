@@ -10,9 +10,25 @@ const finalResponse = [
 ].join("\n");
 
 test("keeps a rich Hermes conversation in the right panel", async ({ page }) => {
+  let submittedBriefings = 0;
+  await page.route("**/api/morning-briefing", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      json: {
+        connected: true,
+        status: "empty",
+        storeId: "SEA-014",
+        businessDate: "2026-08-03",
+        presentation: null,
+      },
+    });
+  });
   await page.route("**/api/hermes-chat*", async (route) => {
     const request = route.request();
     if (request.method() === "POST") {
+      const body = request.postDataJSON() as { input?: string };
+      expect(body.input).toBe("Give me the morning briefing");
+      submittedBriefings += 1;
       await route.fulfill({
         status: 200,
         contentType: "text/event-stream",
@@ -44,12 +60,12 @@ test("keeps a rich Hermes conversation in the right panel", async ({ page }) => 
   });
 
   await page.goto("/");
-  await page.getByRole("tab", { name: "Chat" }).click();
-  await expect(page.getByText("Ask Hermes about your store.")).toBeVisible();
-
-  await page.getByRole("button", { name: "Give me the morning briefing", exact: true }).click();
+  await page.getByRole("button", { name: "Give me a morning briefing", exact: true }).click();
+  await expect(page.getByRole("tab", { name: "Chat" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Chat" })).toBeFocused();
 
   await expect(page.getByRole("heading", { name: "Opening priorities" })).toBeVisible();
+  expect(submittedBriefings).toBe(1);
   await expect(page.getByRole("cell", { name: "OPD" })).toBeVisible();
   await expect(page.getByText("Reading skill")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.sessionStorage.getItem("retail-store-manager.hermes-chat-session"))).toBe(sessionId);
@@ -58,4 +74,5 @@ test("keeps a rich Hermes conversation in the right panel", async ({ page }) => 
   await page.getByRole("tab", { name: "Chat" }).click();
   await expect(page.getByRole("heading", { name: "Opening priorities" })).toBeVisible();
   await expect(page.getByText("Give me the morning briefing.")).toBeVisible();
+  expect(submittedBriefings).toBe(1);
 });

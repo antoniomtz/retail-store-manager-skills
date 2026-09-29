@@ -89,12 +89,15 @@ install.
 The UI opens on the Dashboard tab. A successful morning briefing publishes its
 one-to-four current manager priorities to that dashboard. Reset clears only
 the UI presentation and telemetry window; it does not delete Phoenix traces.
+When no briefing is present, select **Give me a morning briefing** to open Chat
+and send that prompt to Hermes.
 The Chat tab maintains one Hermes session per browser tab and includes example
 prompts for the morning briefing, current priorities, OPD, and checkout.
 The Store incident tab defaults to UI delivery: it runs an isolated Hermes
-session, displays filtered tool progress, and streams the rich assessment into
-a closeable dialog. Telegram is selectable only when `--telegram-user-id` was
-provided during installation.
+session while keeping the incident image visible. Filtered tool progress appears
+in the scenario panel. Select **View live output** or **View assessment** to
+open the closeable result dialog. Telegram is selectable only when
+`--telegram-user-id` was provided during installation.
 
 The store view is an animated 3D store (Three.js) with 8-bit shoppers and
 associates walking routes computed from its shelves and walls. Checkout
@@ -146,8 +149,8 @@ API key, enable browser CORS, or expose the API server directly.
 After installation, run `./install.sh --verify`. Open or report the loopback UI
 at http://127.0.0.1:3000 and Phoenix at http://127.0.0.1:6006. Trigger one
 synthetic Store incident with UI delivery, wait for Hermes to finish, and
-verify that the rich assessment appears in the UI dialog. If Telegram was
-requested, verify Telegram delivery separately. Confirm that the UI telemetry
+select **View assessment** to verify the rich result in the UI dialog. If
+Telegram was requested, verify delivery separately. Confirm that the UI telemetry
 API shows Phoenix connected, Relay/OpenInference active or recent, and at least
 one completed plain-language Hermes activity. If telemetry is arriving but the
 plain-language activity is empty, check for the `hermes.turn` compatibility

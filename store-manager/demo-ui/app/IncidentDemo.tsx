@@ -105,7 +105,6 @@ export function useIncidentDemo() {
       deliveryTarget: "ui",
     }));
     setSteps([{ id: "session", label: "Starting Hermes assessment", state: "running" }]);
-    setAssessmentOpen(true);
 
     const response = await fetch("/api/incident-demo/stream", {
       method: "POST",
@@ -480,6 +479,13 @@ export function IncidentDemoControls(props: ReturnType<typeof useIncidentDemo>) 
           <strong>Produce-area camera ready</strong>
         </div>
       )}
+
+      {data.deliveryTarget === "ui"
+        && data.active
+        && data.phase !== "complete"
+        && steps.length > 0
+        ? <IncidentSteps steps={steps} />
+        : null}
 
       {data.deliveryTarget === "ui" && data.active ? (
         <div className="checkout-demo__receipt incident-demo__receipt">

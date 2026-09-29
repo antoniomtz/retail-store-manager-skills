@@ -1431,15 +1431,45 @@ a {
 .morning-briefing-empty {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 12px;
 }
 
 .morning-briefing-empty strong {
+  flex: 1 1 180px;
   color: var(--text);
   font-size: var(--type-sm);
   font-weight: 620;
   line-height: 1.35;
+}
+
+.morning-briefing-empty button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border: 1px solid rgb(150 201 61 / 42%);
+  border-radius: 999px;
+  color: var(--text);
+  background: rgb(150 201 61 / 10%);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--type-xs);
+  font-weight: 680;
+  line-height: 1.2;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.morning-briefing-empty button span {
+  color: var(--lime-bright);
+}
+
+.morning-briefing-empty button:hover,
+.morning-briefing-empty button:focus-visible {
+  border-color: var(--lime-bright);
+  background: rgb(150 201 61 / 17%);
+  transform: translateY(-1px);
 }
 
 .morning-priorities__heading {

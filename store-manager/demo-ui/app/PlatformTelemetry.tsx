@@ -74,7 +74,11 @@ function LoadingPanel({ requestFailed }: { requestFailed: boolean }) {
   );
 }
 
-export default function PlatformTelemetry() {
+type PlatformTelemetryProps = {
+  onRunMorningBriefing: () => void;
+};
+
+export default function PlatformTelemetry({ onRunMorningBriefing }: PlatformTelemetryProps) {
   const [data, setData] = useState<PlatformTelemetryData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [requestFailed, setRequestFailed] = useState(false);
@@ -386,7 +390,11 @@ export default function PlatformTelemetry() {
       {briefing?.status === "empty" ? (
         <section className="dashboard-panel morning-briefing-empty" aria-live="polite">
           <span className="section-icon" aria-hidden="true">☀</span>
-          <strong>Run the morning briefing skill to populate this dashboard.</strong>
+          <strong>No morning briefing yet.</strong>
+          <button type="button" onClick={onRunMorningBriefing}>
+            <span aria-hidden="true">✦</span>
+            Give me a morning briefing
+          </button>
         </section>
       ) : null}
 
