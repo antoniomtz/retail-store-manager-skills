@@ -3,6 +3,7 @@
 // cached with its depth; every frame then composites that image and draws the
 // moving 8-bit characters on top, depth-tested against the shelves.
 import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { Reflector } from "three/addons/objects/Reflector.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
@@ -12,18 +13,24 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { FullScreenQuad } from "three/addons/postprocessing/Pass.js";
 import { canvasTexture } from "./kit.js";
 import { buildStore } from "./store.js";
-import { STORE_ASPECT } from "../store-view-model.mjs";
 import { NavGrid } from "./navigation";
-import { loadSpriteLibrary, VIEW_DIRECTION } from "./sprites";
+import { loadSpriteLibrary, setCameraDirection, VIEW_DIRECTION } from "./sprites";
 import { StoreLife, type CheckoutVisual, type OpdVisual } from "./life";
 
 export type { CheckoutVisual, OpdVisual };
-export type StoreView = { scale: number; x: number; y: number };
-export type ScreenPoint = { x: number; y: number };
+/** Zoom readout and limits reported to the view controls. */
+export type StoreZoom = { percent: number; canZoomIn: boolean; canZoomOut: boolean };
+/** A store point to frame, how closely (1 = whole store), and where it should
+ * land in the viewport as fractions from the top left. */
+export type StoreFocus = { x: number; y: number; z: number; scale: number; left?: number; top?: number };
 
+/** Aspect ratio of the whole-store framing at 100% zoom. */
+export const STORE_ASPECT = 1137 / 909;
+// 100% zoom: the whole store from the default isometric angle.
 const CAMERA_DISTANCE = 133;
-const VIEW_EASING_MS = 90;
-// Scenario focus and reset glide rather than snap.
+const MIN_DISTANCE = 30;
+const MAX_DISTANCE = 270;
+// Scenario focus, reset, and button zoom glide rather than snap.
 const FOCUS_TWEEN_MS = 900;
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
 
@@ -92,14 +99,20 @@ const CompositeShader = {
 };
 
 type Anchor = { element: HTMLElement; position: THREE.Vector3 };
+type CameraTween = { fromTarget: THREE.Vector3; toTarget: THREE.Vector3; fromOffset: THREE.Vector3; toOffset: THREE.Vector3; elapsed: number };
 
-export type StoreSceneOptions = { reducedMotion?: boolean; signal?: AbortSignal };
+export type StoreSceneOptions = {
+  /** Element that receives drag, wheel, and arrow-key camera input. */
+  controlsElement: HTMLElement;
+  onZoom?: (zoom: StoreZoom) => void;
+  reducedMotion?: boolean;
+  signal?: AbortSignal;
+};
 
 export class StoreScene {
   private readonly life: StoreLife;
   private readonly renderer: THREE.WebGLRenderer;
   private readonly camera = new THREE.PerspectiveCamera(7.8, STORE_ASPECT, 20, 460);
-  private readonly baseCamera = new THREE.PerspectiveCamera(7.8, STORE_ASPECT, 20, 460);
   private readonly staticScene = new THREE.Scene();
   private readonly dynamicScene = new THREE.Scene();
   private readonly composer: EffectComposer;
@@ -112,10 +125,11 @@ export class StoreScene {
   private readonly projected = new THREE.Vector3();
   private readonly coarsePointer: boolean;
   private size = { width: 1, height: 1 };
-  private viewTarget: StoreView = { scale: 1, x: 0, y: 0 };
-  private viewCurrent: StoreView = { scale: 1, x: 0, y: 0 };
-  private viewTween: { from: StoreView; to: StoreView; elapsed: number } | null = null;
   private readonly reducedMotion: boolean;
+  private readonly controls: OrbitControls;
+  private readonly onZoom?: (zoom: StoreZoom) => void;
+  private cameraTween: CameraTween | null = null;
+  private zoomPercent = 0;
   private staticDirty = true;
   private anchorsDirty = true;
   private firstFrame: (() => void) | null = null;
@@ -133,6 +147,7 @@ export class StoreScene {
   private constructor(canvas: HTMLCanvasElement, sprites: Awaited<ReturnType<typeof loadSpriteLibrary>>, options: StoreSceneOptions) {
     this.coarsePointer = matchMedia("(pointer: coarse)").matches;
     this.reducedMotion = options.reducedMotion === true;
+    this.onZoom = options.onZoom;
     // Antialiasing comes from the multisampled composer target.
     this.renderer = new THREE.WebGLRenderer({ canvas, powerPreference: "high-performance" });
     this.renderer.shadowMap.enabled = true;
@@ -172,11 +187,25 @@ export class StoreScene {
     dynamicSun.position.set(-26, 38, 26);
     this.dynamicScene.add(dynamicSun);
 
-    for (const camera of [this.camera, this.baseCamera]) {
-      camera.position.copy(VIEW_DIRECTION).multiplyScalar(CAMERA_DISTANCE);
-      camera.lookAt(0, 0, 0);
-      camera.updateMatrixWorld(); // the base camera is only projected, never rendered
-    }
+    // Orbit around the store: drag to rotate, scroll to zoom toward the cursor,
+    // right-drag or arrow keys to pan. It opens on the default isometric view.
+    this.camera.position.copy(VIEW_DIRECTION).multiplyScalar(CAMERA_DISTANCE);
+    this.controls = new OrbitControls(this.camera, options.controlsElement);
+    Object.assign(this.controls, {
+      enableDamping: !this.reducedMotion,
+      dampingFactor: 0.08,
+      rotateSpeed: 0.55,
+      zoomToCursor: true,
+      minDistance: MIN_DISTANCE,
+      maxDistance: MAX_DISTANCE,
+      minPolarAngle: 0.22, // never quite top-down
+      maxPolarAngle: 1.36, // never below the floor
+      screenSpacePanning: false,
+      maxTargetRadius: 16, // panning cannot lose the store
+    });
+    this.controls.listenToKeyEvents(options.controlsElement);
+    this.controls.addEventListener("change", this.onCameraChange);
+    this.controls.update();
 
     this.reflector = null;
     if (!this.coarsePointer) {
@@ -250,81 +279,81 @@ export class StoreScene {
     this.depthTarget.setSize(Math.round(width * pixelRatio), Math.round(height * pixelRatio));
     this.reflector?.getRenderTarget().setSize(Math.round((width * pixelRatio) / 2), Math.round((height * pixelRatio) / 2));
     // At 100% the whole store framing (STORE_ASPECT) fits inside the viewport.
-    for (const camera of [this.camera, this.baseCamera]) {
-      camera.aspect = width / height;
-      camera.zoom = Math.min(1, width / height / STORE_ASPECT);
-    }
-    this.baseCamera.updateProjectionMatrix();
-    this.applyView(this.viewCurrent);
+    this.camera.aspect = width / height;
+    this.camera.zoom = Math.min(1, width / height / STORE_ASPECT);
+    this.camera.updateProjectionMatrix();
+    this.onCameraChange();
   }
 
   /**
-   * Moves toward a zoom/pan view. Large jumps (scenario focus, reset) glide;
-   * small ones (wheel, buttons) ease quickly; `immediate` follows a drag.
+   * Glides to frame a store point from the default isometric angle, where every
+   * scenario area is visible, placing it at the requested viewport position.
    */
-  setView(view: StoreView, immediate = false) {
-    const current = this.viewCurrent;
-    this.viewTarget = { ...view };
-    const largeJump = Math.abs(view.scale - current.scale) > 0.3 || Math.hypot(view.x - current.x, view.y - current.y) > 240;
-    this.viewTween = largeJump && !immediate && !this.reducedMotion ? { from: { ...current }, to: { ...view }, elapsed: 0 } : null;
-    if (immediate || this.reducedMotion) this.applyView(this.viewTarget);
+  focus({ x, y, z, scale, left = 0.5, top = 0.5 }: StoreFocus) {
+    const distance = THREE.MathUtils.clamp(CAMERA_DISTANCE / scale, MIN_DISTANCE, MAX_DISTANCE);
+    const offset = VIEW_DIRECTION.clone().multiplyScalar(distance);
+    // Shift the orbit target so the point lands at (left, top) on screen.
+    const forward = VIEW_DIRECTION.clone().negate();
+    const right = new THREE.Vector3().crossVectors(forward, this.camera.up).normalize();
+    const up = new THREE.Vector3().crossVectors(right, forward);
+    const height = (2 * distance * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2))) / this.camera.zoom;
+    const width = height * this.camera.aspect;
+    const target = new THREE.Vector3(x, y, z)
+      .addScaledVector(right, -(left - 0.5) * width)
+      .addScaledVector(up, (top - 0.5) * height);
+    this.glideTo(target, offset);
   }
 
-  // Zoom and pan crop the fixed isometric view like the 2D transform
-  // translate(x, y) scale(scale) about the viewport centre, so the view model
-  // (store-view-model.mjs) can clamp it in screen pixels.
-  private applyView(view: StoreView) {
-    this.viewCurrent = { ...view };
-    const { width, height } = this.size;
-    const { scale, x, y } = view;
-    if (scale === 1 && x === 0 && y === 0) {
-      this.camera.clearViewOffset();
-    } else {
-      const subWidth = width / scale;
-      const subHeight = height / scale;
-      this.camera.setViewOffset(width, height, width / 2 - x / scale - subWidth / 2, height / 2 - y / scale - subHeight / 2, subWidth, subHeight);
-    }
-    this.camera.updateProjectionMatrix();
+  /** Returns to the whole store from the default angle (100%). */
+  reset() {
+    this.glideTo(new THREE.Vector3(), VIEW_DIRECTION.clone().multiplyScalar(CAMERA_DISTANCE));
+  }
+
+  /** Moves closer (factor < 1) or farther (factor > 1), keeping the angle. */
+  zoomBy(factor: number) {
+    const offset = this.camera.position.clone().sub(this.controls.target);
+    const distance = THREE.MathUtils.clamp(offset.length() * factor, MIN_DISTANCE, MAX_DISTANCE);
+    this.glideTo(this.controls.target.clone(), offset.setLength(distance));
+  }
+
+  private glideTo(target: THREE.Vector3, offset: THREE.Vector3) {
+    this.cameraTween = {
+      fromTarget: this.controls.target.clone(),
+      toTarget: target,
+      fromOffset: this.camera.position.clone().sub(this.controls.target),
+      toOffset: offset,
+      elapsed: this.reducedMotion ? FOCUS_TWEEN_MS : 0,
+    };
+  }
+
+  private onCameraChange = () => {
+    const offset = this.camera.position.clone().sub(this.controls.target);
+    setCameraDirection(offset.clone().normalize());
     this.staticDirty = true;
     this.anchorsDirty = true;
-  }
+    const distance = offset.length();
+    const percent = Math.round((CAMERA_DISTANCE / distance) * 100);
+    if (percent !== this.zoomPercent) {
+      this.zoomPercent = percent;
+      this.onZoom?.({ percent, canZoomIn: distance > MIN_DISTANCE + 0.5, canZoomOut: distance < MAX_DISTANCE - 0.5 });
+    }
+  };
 
-  private easeView(deltaMs: number) {
-    const tween = this.viewTween;
+  private stepCamera(deltaMs: number) {
+    const tween = this.cameraTween;
     if (tween) {
-      // Zoom evenly (log scale) while the view centre travels in a line.
       tween.elapsed += deltaMs;
       const t = Math.min(1, tween.elapsed / FOCUS_TWEEN_MS);
       const e = easeInOutCubic(t);
-      const { width, height } = this.size;
-      const scale = Math.exp(Math.log(tween.from.scale) + (Math.log(tween.to.scale) - Math.log(tween.from.scale)) * e);
-      const centre = (view: StoreView, half: number, offset: number) => half - offset / view.scale;
-      const cx = centre(tween.from, width / 2, tween.from.x) + (centre(tween.to, width / 2, tween.to.x) - centre(tween.from, width / 2, tween.from.x)) * e;
-      const cy = centre(tween.from, height / 2, tween.from.y) + (centre(tween.to, height / 2, tween.to.y) - centre(tween.from, height / 2, tween.from.y)) * e;
-      this.applyView(t >= 1 ? tween.to : { scale, x: (width / 2 - cx) * scale, y: (height / 2 - cy) * scale });
-      if (t >= 1) this.viewTween = null;
-      return;
+      this.controls.target.lerpVectors(tween.fromTarget, tween.toTarget, e);
+      // Swing around the target while easing the distance.
+      const length = THREE.MathUtils.lerp(tween.fromOffset.length(), tween.toOffset.length(), e);
+      const direction = tween.fromOffset.clone().normalize().lerp(tween.toOffset.clone().normalize(), e).normalize();
+      this.camera.position.copy(this.controls.target).addScaledVector(direction, length);
+      if (t >= 1) this.cameraTween = null;
+      this.onCameraChange();
     }
-    const target = this.viewTarget;
-    const current = this.viewCurrent;
-    if (current.scale === target.scale && current.x === target.x && current.y === target.y) return;
-    const t = 1 - Math.exp(-deltaMs / VIEW_EASING_MS);
-    const next = {
-      scale: current.scale + (target.scale - current.scale) * t,
-      x: current.x + (target.x - current.x) * t,
-      y: current.y + (target.y - current.y) * t,
-    };
-    const settled = Math.abs(next.scale - target.scale) < 0.001 && Math.abs(next.x - target.x) < 0.3 && Math.abs(next.y - target.y) < 0.3;
-    this.applyView(settled ? target : next);
-  }
-
-  /** Viewport position of a world point in the unzoomed (100%) framing. */
-  baseScreenPoint(x: number, y: number, z: number): ScreenPoint {
-    this.projected.set(x, y, z).project(this.baseCamera);
-    return {
-      x: ((this.projected.x + 1) / 2) * this.size.width,
-      y: ((1 - this.projected.y) / 2) * this.size.height,
-    };
+    this.controls.update(deltaMs / 1000);
   }
 
   /** Keeps an HTML label pinned to a world position; returns its remover. */
@@ -390,7 +419,7 @@ export class StoreScene {
     if (this.disposed) return;
     this.clock.update(time);
     const deltaMs = Math.min(100, this.clock.getDelta() * 1000);
-    this.easeView(deltaMs);
+    this.stepCamera(deltaMs);
     this.life.update(deltaMs / 1000);
     if (this.staticDirty) this.renderStatic();
 
@@ -415,6 +444,10 @@ export class StoreScene {
   dispose() {
     this.disposed = true;
     this.renderer.setAnimationLoop(null);
+    this.controls.removeEventListener("change", this.onCameraChange);
+    this.controls.stopListenToKeyEvents();
+    this.controls.dispose();
+    setCameraDirection(VIEW_DIRECTION); // the direction is shared with any later scene
     this.clock.dispose();
     this.renderer.domElement.removeEventListener("webglcontextrestored", this.bakeLighting);
     this.life.dispose();

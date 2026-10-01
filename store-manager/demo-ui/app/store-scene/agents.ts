@@ -3,13 +3,11 @@
 import * as THREE from "three";
 import type { FloorPoint, NavGrid } from "./navigation";
 import {
+  cameraView,
   CharacterMaterial,
   FLOOR_STRETCH,
   PERSON_HEIGHT,
   shadowTexture,
-  VERTICAL_STRETCH,
-  VIEW_DIRECTION,
-  VIEW_YAW,
   type Pose,
   type SpriteLibrary,
 } from "./sprites";
@@ -37,11 +35,6 @@ export const pose = (poses: { walk?: Pose; rest?: Pose }): Step => ({ kind: "pos
 const FACES_RIGHT: Record<Pose, boolean> = { walk: true, cart: true, carry: false, idle: true, scan: false };
 const STRIDE: Record<Pose, number> = { walk: 0.34, cart: 0.42, carry: 0.34, idle: 1, scan: 1 };
 const IDLE_PERIOD: Record<Pose, number> = { walk: 0, cart: 0, carry: 0, idle: 0.8, scan: 1.1 };
-// On-screen right, as a floor direction, for choosing which way to face.
-const SCREEN_RIGHT = new THREE.Vector3(0, 1, 0).cross(VIEW_DIRECTION).normalize();
-// Sprites sit slightly toward the camera along the view ray: same screen
-// position, but they no longer clip into the shelf they stand beside.
-const TOWARD_CAMERA = VIEW_DIRECTION.clone().multiplyScalar(0.38);
 
 const planeGeometry = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0);
 const shadowGeometry = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
@@ -96,6 +89,7 @@ export class Agent {
   private retarget = 0;
   private idleFacing: Facing | null = null;
   private restOverride: Pose | null = null;
+  private viewVersion = -1;
 
   constructor(options: AgentOptions) {
     this.sprites = options.sprites;
@@ -111,14 +105,12 @@ export class Agent {
     this.facing = options.facing ?? 1;
 
     this.body = new THREE.Mesh(planeGeometry, this.material);
-    this.body.rotation.y = VIEW_YAW;
-    this.body.position.copy(TOWARD_CAMERA);
     this.shadowMaterial = new THREE.MeshBasicMaterial({ map: shadowTexture(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
     this.shadow = new THREE.Mesh(shadowGeometry, this.shadowMaterial);
-    this.shadow.rotation.y = VIEW_YAW;
     this.shadow.position.y = 0.018;
     this.shadow.renderOrder = -1;
     this.group.add(this.shadow, this.body);
+    this.faceCamera();
     this.showPose(this.restPose, 0);
     this.applyOpacity();
     this.syncTransform();
@@ -136,7 +128,7 @@ export class Agent {
       this.shownPose = poseName;
       this.material.setOutfit(sheet.fabric, this.outfit);
       const height = PERSON_HEIGHT * this.scale;
-      this.body.scale.set(height * sheet.aspect, height * VERTICAL_STRETCH, 1);
+      this.body.scale.set(height * sheet.aspect, height * cameraView.stretch, 1);
       const footprint = Math.min(height * sheet.aspect * 0.5, height * 0.42);
       this.shadow.scale.set(footprint, 1, footprint * 0.34 * FLOOR_STRETCH);
     }
@@ -338,13 +330,25 @@ export class Agent {
     }
     this.stride += this.speed * dt;
     this.moving = this.speed > 0.03;
-    const screen = directionX * SCREEN_RIGHT.x + directionZ * SCREEN_RIGHT.z;
+    const screen = directionX * cameraView.right.x + directionZ * cameraView.right.z;
     if (Math.abs(screen) > 0.2) this.facing = screen > 0 ? 1 : -1;
     this.syncTransform();
     return false;
   }
 
+  // Billboards face the camera horizontally and sit slightly toward it along
+  // the view ray: same screen position, but no clipping into nearby shelves.
+  private faceCamera() {
+    if (this.viewVersion === cameraView.version) return;
+    this.viewVersion = cameraView.version;
+    this.body.rotation.y = cameraView.yaw;
+    this.body.position.copy(cameraView.toward);
+    this.shadow.rotation.y = cameraView.yaw;
+    this.shownPose = null; // re-apply the stretch for the new elevation
+  }
+
   private animate(dt: number, reducedMotion: boolean) {
+    this.faceCamera();
     if (this.moving) {
       const poseName = this.walkPose;
       this.frame = Math.floor(this.stride / STRIDE[poseName]) % 2;

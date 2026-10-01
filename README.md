@@ -99,14 +99,15 @@ in the scenario panel. Select **View live output** or **View assessment** to
 open the closeable result dialog. Telegram is selectable only when
 `--telegram-user-id` was provided during installation.
 
-The store view is an animated 3D store (Three.js) with 8-bit shoppers and
-associates walking routes computed from its shelves and walls. Checkout
-customers, OPD pickers and backlog, and the incident spill follow the live
-scenario state. Selecting **Checkout queue**, **OPD surge**, or **Store
-incident** moves the camera to that area; use the zoom controls, scroll wheel,
-drag, or arrow keys to navigate, and Home to reset. The browser needs WebGL 2;
-without it, the store area shows an unavailable message and the scenario
-controls keep working.
+The store view is an animated 3D store (Three.js) you can orbit freely, with
+8-bit shoppers and associates walking routes computed from its shelves and
+walls. Checkout customers, OPD pickers and backlog, and the incident spill
+follow the live scenario state. Drag to rotate, scroll or use the zoom
+controls to zoom, and right-drag or use the arrow keys to pan; Home or Reset
+returns to the whole store. Selecting **Checkout queue**, **OPD surge**, or
+**Store incident** glides back to the isometric angle and frames that area.
+The browser needs WebGL 2; without it, the store area shows an unavailable
+message and the scenario controls keep working.
 
 ## Copy/paste prompt for Codex
 
