@@ -20,14 +20,34 @@ const PADDING = 8;
 
 /** Apparent on-screen height of a person, in metres at the store's scale. */
 export const PERSON_HEIGHT = 1.3;
-// Camera elevation of the fixed isometric view (see StoreScene).
+// Default isometric camera direction (target to camera; see StoreScene).
 export const VIEW_DIRECTION = new THREE.Vector3(0.52814, 0.58245, 0.62277).normalize();
-const PITCH = Math.asin(VIEW_DIRECTION.y);
-/** Upright planes are stretched so their on-screen proportions match the art. */
-export const VERTICAL_STRETCH = 1 / Math.cos(PITCH);
-/** Floor decals are stretched along the view so they read as drawn. */
-export const FLOOR_STRETCH = 1 / Math.sin(PITCH);
+/** Floor decals are stretched along the default view so they read as drawn. */
+export const FLOOR_STRETCH = 1 / VIEW_DIRECTION.y;
 export const VIEW_YAW = Math.atan2(VIEW_DIRECTION.x, VIEW_DIRECTION.z);
+
+/** Where the camera currently looks from; character billboards turn toward it. */
+export const cameraView = {
+  version: 0,
+  yaw: 0,
+  /** Upright planes stretch to keep the art's proportions, capped near top-down. */
+  stretch: 1,
+  /** Offset toward the camera along the view ray, so sprites don't clip shelves. */
+  toward: new THREE.Vector3(),
+  /** On-screen right as a floor direction, for choosing which way to face. */
+  right: new THREE.Vector3(),
+};
+
+/** Updates the shared camera direction (a unit vector from the target to the camera). */
+export function setCameraDirection(direction: THREE.Vector3) {
+  const elevation = Math.asin(THREE.MathUtils.clamp(direction.y, -1, 1));
+  cameraView.yaw = Math.atan2(direction.x, direction.z);
+  cameraView.stretch = Math.min(1.6, 1 / Math.cos(elevation));
+  cameraView.toward.copy(direction).multiplyScalar(0.38);
+  cameraView.right.set(direction.z, 0, -direction.x).normalize();
+  cameraView.version++;
+}
+setCameraDirection(VIEW_DIRECTION);
 
 async function loadImage(src: string) {
   const image = new Image();

@@ -92,28 +92,24 @@ a {
   z-index: 3;
 }
 
+/* The orbit camera owns pointer input: drag rotates, wheel zooms. */
 .store-stage__viewport {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  cursor: default;
-  touch-action: pan-y;
+  cursor: grab;
+  touch-action: none;
   user-select: none;
   z-index: 1;
+}
+
+.store-stage__viewport:active {
+  cursor: grabbing;
 }
 
 .store-stage__viewport:focus-visible {
   outline: 2px solid var(--lime-bright);
   outline-offset: -4px;
-}
-
-.store-stage__viewport--pannable {
-  cursor: grab;
-  touch-action: none;
-}
-
-.store-stage__viewport--dragging {
-  cursor: grabbing;
 }
 
 .store-stage__scene {
