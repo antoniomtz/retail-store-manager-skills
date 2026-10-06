@@ -119,5 +119,5 @@ export const DOCK_DROPS: Spot[] = [
 ];
 
 // ------------------------------------------------------------- incident
-/** The synthetic spill beside the produce tables. */
-export const SPILL: FloorPoint = { x: 9.1, z: 3.45 };
+/** The synthetic spill in the produce aisle between the two long tables, as in the incident footage. */
+export const SPILL: FloorPoint = { x: 6.35, z: 6.4 };
